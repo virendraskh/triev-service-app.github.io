@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1f2e">
+<title>TriEV Service App</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f1117;--surface:#1a1f2e;--surface2:#242938;--surface3:#2e3450;
+  --primary:#4f8ef7;--primary-dark:#2d6ae0;--success:#22c55e;--warning:#f59e0b;
+  --danger:#ef4444;--purple:#a855f7;--teal:#14b8a6;--orange:#f97316;
+  --text:#e8eaf6;--text2:#9ba3c0;--text3:#6b7494;
+  --border:#2e3450;--radius:12px;--radius-sm:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* TOPBAR */
+.topbar{background:var(--surface);padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar .back{font-size:20px;cursor:pointer;color:var(--primary);min-width:32px}
+.topbar h1{font-size:16px;font-weight:700;flex:1}
+.topbar .badge{background:var(--primary);color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600}
+
+/* LOGIN */
+#login{background:linear-gradient(160deg,#0f1117 0%,#1a1f2e 100%);justify-content:center;align-items:center;padding:24px}
+.login-logo{text-align:center;margin-bottom:40px}
+.login-logo .icon{font-size:56px;margin-bottom:8px}
+.login-logo h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-logo p{color:var(--text2);font-size:14px;margin-top:4px}
+.login-card{background:var(--surface);border-radius:20px;padding:28px;width:100%;max-width:400px;border:1px solid var(--border)}
+.field-group{margin-bottom:18px}
+.field-group label{display:block;color:var(--text2);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.field-group input,.field-group select,.field-group textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:13px 16px;color:var(--text);font-size:15px;outline:none;transition:.2s}
+.field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--primary);background:var(--surface3)}
+.field-group select option{background:var(--surface2)}
+.field-group textarea{resize:vertical;min-height:80px}
+
+/* BUTTONS */
+.btn{width:100%;padding:14px;border-radius:var(--radius);border:none;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-warning{background:var(--warning);color:#000}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1.5px solid var(--border)}
+.btn-sm{padding:9px 16px;font-size:13px;width:auto;border-radius:var(--radius-sm)}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+
+/* ERROR */
+.err-msg{background:rgba(239,68,68,.15);border:1px solid var(--danger);color:#fca5a5;border-radius:var(--radius-sm);padding:12px;font-size:13px;text-align:center;margin-bottom:16px}
+
+/* HOME */
+.home-content{flex:1;padding:16px;overflow-y:auto}
+.user-banner{background:linear-gradient(135deg,var(--surface2),var(--surface3));border-radius:var(--radius);padding:16px;margin-bottom:20px;border:1px solid var(--border)}
+.user-banner h2{font-size:18px;font-weight:700;margin-bottom:4px}
+.user-banner p{color:var(--text2);font-size:13px}
+.role-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(79,142,247,.2);border:1px solid rgba(79,142,247,.4);color:var(--primary);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;margin-top:8px}
+
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.home-card{background:var(--surface);border-radius:var(--radius);padding:18px 14px;cursor:pointer;border:1.5px solid var(--border);transition:.15s;text-align:center}
+.home-card:active{transform:scale(.96);border-color:var(--primary)}
+.home-card.blue{border-top:3px solid var(--primary)}
+.home-card.green{border-top:3px solid var(--success)}
+.home-card.orange{border-top:3px solid var(--orange)}
+.home-card.purple{border-top:3px solid var(--purple)}
+.home-card.teal{border-top:3px solid var(--teal)}
+.home-card.red{border-top:3px solid var(--danger)}
+.home-card.yellow{border-top:3px solid var(--warning)}
+.home-card .card-icon{font-size:32px;margin-bottom:8px}
+.home-card .card-title{font-size:13px;font-weight:700;margin-bottom:3px}
+.home-card .card-sub{font-size:11px;color:var(--text2)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:16px}
+
+/* TICKET CARDS */
+.ticket-card{background:var(--surface);border-radius:var(--radius);padding:14px;margin-bottom:12px;border:1px solid var(--border);cursor:pointer;transition:.15s}
+.ticket-card:active{border-color:var(--primary)}
+.ticket-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.ticket-id{font-size:13px;font-weight:700;color:var(--primary)}
+.ticket-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tag{display:inline-flex;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.tag-blue{background:rgba(79,142,247,.2);color:var(--primary)}
+.tag-green{background:rgba(34,197,94,.2);color:var(--success)}
+.tag-orange{background:rgba(249,115,22,.2);color:var(--orange)}
+.tag-red{background:rgba(239,68,68,.2);color:var(--danger)}
+.tag-purple{background:rgba(168,85,247,.2);color:var(--purple)}
+.tag-yellow{background:rgba(245,158,11,.2);color:var(--warning)}
+.tag-teal{background:rgba(20,184,166,.2);color:var(--teal)}
+.tag-grey{background:rgba(107,116,148,.2);color:var(--text2)}
+.ticket-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.ticket-sub{font-size:12px;color:var(--text2)}
+
+/* STATUS BADGE */
+.status-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.s-open{background:rgba(245,158,11,.2);color:var(--warning)}
+.s-assigned{background:rgba(79,142,247,.2);color:var(--primary)}
+.s-repair{background:rgba(249,115,22,.2);color:var(--orange)}
+.s-qc{background:rgba(168,85,247,.2);color:var(--purple)}
+.s-rfd{background:rgba(34,197,94,.2);color:var(--success)}
+.s-closed{background:rgba(107,116,148,.2);color:var(--text2)}
+
+/* PARTS SELECTOR */
+.parts-selector{background:var(--surface2);border-radius:var(--radius);padding:14px;margin-bottom:16px;border:1px solid var(--border)}
+.cat-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.cat-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--surface3);color:var(--text2);transition:.15s}
+.cat-tab.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.parts-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.part-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface3);border-radius:var(--radius-sm);cursor:pointer;border:1.5px solid transparent;transition:.15s}
+.part-item.selected{border-color:var(--primary);background:rgba(79,142,247,.15)}
+.part-item .part-check{width:20px;height:20px;border-radius:5px;border:2px solid var(--text3);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.part-item.selected .part-check{background:var(--primary);border-color:var(--primary)}
+.part-name{font-size:12px;flex:1;line-height:1.3}
+.part-id{font-size:10px;color:var(--text3)}
+.qty-control{display:flex;align-items:center;gap:8px}
+.qty-btn{width:28px;height:28px;border-radius:6px;border:none;background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.qty-val{font-size:14px;font-weight:700;min-width:20px;text-align:center}
+
+/* SELECTED PARTS CHIPS */
+.selected-parts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.sel-part-chip{display:flex;align-items:center;gap:6px;background:rgba(79,142,247,.2);border:1px solid rgba(79,142,247,.4);border-radius:20px;padding:5px 10px;font-size:11px}
+.sel-part-chip .remove{cursor:pointer;color:var(--danger);font-weight:700}
+
+/* DAMAGE SUMMARY */
+.damage-summary{background:var(--surface2);border-radius:var(--radius);padding:14px;margin-top:12px;border:1px solid var(--border)}
+.summary-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.summary-row:last-child{border-bottom:none;font-weight:700;font-size:14px}
+.summary-row span:last-child{color:var(--primary)}
+
+/* CHECKLIST */
+.checklist-item{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;border:1px solid var(--border)}
+.checklist-item label{font-size:13px;font-weight:600;margin-bottom:8px;display:block}
+.radio-group{display:flex;gap:8px;flex-wrap:wrap}
+.radio-opt{display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);font-size:12px;font-weight:600;transition:.15s}
+.radio-opt.sel-pass{background:rgba(34,197,94,.2);border-color:var(--success);color:var(--success)}
+.radio-opt.sel-fail{background:rgba(239,68,68,.2);border-color:var(--danger);color:var(--danger)}
+.radio-opt.sel-na{background:rgba(107,116,148,.2);border-color:var(--text3);color:var(--text2)}
+
+/* STAT CARDS */
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-card{background:var(--surface);border-radius:var(--radius);padding:14px;text-align:center;border:1px solid var(--border)}
+.stat-card .stat-num{font-size:28px;font-weight:800;margin-bottom:4px}
+.stat-card .stat-label{font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase}
+
+/* SECTION HEADER */
+.section-hdr{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text3);letter-spacing:.5px;margin:16px 0 8px}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text2);gap:10px;flex-direction:column}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface3);color:var(--text);padding:12px 24px;border-radius:30px;font-size:13px;font-weight:600;transition:.3s;z-index:9999;border:1px solid var(--border);white-space:nowrap;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.success{background:rgba(34,197,94,.9);border-color:var(--success)}
+#toast.error{background:rgba(239,68,68,.9);border-color:var(--danger)}
+
+/* BOTTOM NAV */
+.bottom-nav{display:flex;background:var(--surface);border-top:1px solid var(--border);padding:8px 0 env(safe-area-inset-bottom,8px)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px;color:var(--text3);font-size:10px;font-weight:600;transition:.15s}
+.nav-item.active{color:var(--primary)}
+.nav-item .nav-icon{font-size:22px}
+
+/* DETAIL SECTIONS */
+.detail-section{background:var(--surface2);border-radius:var(--radius);padding:14px;margin-bottom:12px;border:1px solid var(--border)}
+.detail-section h3{font-size:13px;font-weight:700;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.detail-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.detail-row:last-child{border-bottom:none}
+.detail-row span:first-child{color:var(--text2)}
+.detail-row span:last-child{font-weight:600;text-align:right;max-width:60%}
+
+/* TABS */
+.tabs{display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius);padding:4px;margin-bottom:16px}
+.tab{flex:1;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;text-align:center;color:var(--text2);transition:.15s}
+.tab.active{background:var(--primary);color:#fff}
+
+/* SEARCH */
+.search-box{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius);padding:11px 16px;width:100%;color:var(--text);font-size:14px;margin-bottom:12px;outline:none}
+.search-box:focus{border-color:var(--primary)}
+
+/* RUNNING REPAIR PUBLIC FORM */
+#running-public{background:var(--bg)}
+.lang-toggle{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+.lang-btn{padding:8px 20px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.lang-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* RESPONSIVE */
+@media(max-width:360px){
+  .cards-grid{grid-template-columns:1fr 1fr}
+  .home-card{padding:14px 10px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- LOGIN SCREEN -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="login" class="screen active">
+  <div class="login-logo">
+    <div class="icon">⚡</div>
+    <h1>TriEV Service</h1>
+    <p>Fleet Service Management</p>
+  </div>
+  <div class="login-card">
+    <div id="login-err" class="err-msg" style="display:none"></div>
+    <div class="field-group">
+      <label>Mobile Number</label>
+      <input type="tel" id="inp-mobile" placeholder="Enter mobile number" maxlength="10">
+    </div>
+    <div class="field-group">
+      <label>Password</label>
+      <input type="password" id="inp-pass" placeholder="Enter password">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">🔐 Login</button>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD SCREEN -->
+<div id="change-pass" class="screen">
+  <div class="topbar"><h1>🔑 Set New Password</h1></div>
+  <div class="content">
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Welcome! Please set a new password for your account.</p>
+    <div id="cp-err" class="err-msg" style="display:none"></div>
+    <div class="field-group"><label>New Password</label>
+      <input type="password" id="cp-new" placeholder="Enter new password (min 6 chars)">
+    </div>
+    <div class="field-group"><label>Confirm Password</label>
+      <input type="password" id="cp-confirm" placeholder="Confirm new password">
+    </div>
+    <button class="btn btn-primary" onclick="doChangePass()">✅ Set Password</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- HOME SCREEN -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="home" class="screen">
+  <div class="topbar">
+    <span style="font-size:22px">⚡</span>
+    <h1>TriEV Service</h1>
+    <span id="home-hub-badge" class="badge"></span>
+    <span onclick="doLogout()" style="cursor:pointer;font-size:18px;color:var(--text3)">🚪</span>
+  </div>
+  <div class="home-content">
+    <div class="user-banner">
+      <h2 id="home-user-name">Welcome</h2>
+      <p id="home-user-hub"></p>
+      <div class="role-chip">👤 <span id="home-user-role"></span></div>
+    </div>
+    <!-- Daily role selector for technicians -->
+    <div id="daily-role-selector" style="display:none;margin-bottom:16px">
+      <div class="field-group">
+        <label>Today I am working as</label>
+        <select id="daily-role-select" onchange="setDailyRole()">
+          <option value="Core Technician">🔧 Core Technician</option>
+          <option value="Running Repair Technician">⚡ Running Repair Technician</option>
+          <option value="QC Technician">🔍 QC Technician</option>
+          <option value="On Leave">🏖 On Leave</option>
+        </select>
+      </div>
+    </div>
+    <div class="stats-row" id="home-stats"></div>
+    <div class="section-hdr">My Modules</div>
+    <div class="cards-grid" id="home-cards"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- DAMAGE ASSESSMENT SCREEN -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="damage-form" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>📋 Damage Assessment</h1>
+  </div>
+  <div class="content">
+    <div id="da-step1">
+      <div class="section-hdr">Vehicle Details</div>
+      <div class="field-group">
+        <label>Chassis Number</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="da-chassis" placeholder="Enter Chassis No" style="flex:1;text-transform:uppercase">
+          <button class="btn btn-primary btn-sm" onclick="lookupVehicle()">🔍 Lookup</button>
+        </div>
+      </div>
+      <div id="da-vehicle-info" style="display:none">
+        <div class="detail-section">
+          <h3>Vehicle Found ✅</h3>
+          <div class="detail-row"><span>Reg No</span><span id="da-reg-no">—</span></div>
+          <div class="detail-row"><span>Model</span><span id="da-model">—</span></div>
+          <div class="detail-row"><span>OEM</span><span id="da-oem">—</span></div>
+          <div class="detail-row"><span>NBFC</span><span id="da-nbfc">—</span></div>
+          <div class="detail-row"><span>Hub</span><span id="da-hub-disp">—</span></div>
+        </div>
+        <div class="field-group">
+          <label>Case Type</label>
+          <select id="da-case-type">
+            <option value="Submission">Submission</option>
+            <option value="Exchange">Exchange</option>
+            <option value="Hard Recovery">Hard Recovery</option>
+            <option value="Accident">Accident (Insurance)</option>
+            <option value="Porter">Porter</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Rider ID</label>
+          <input type="text" id="da-rider-id" placeholder="Enter Rider ID">
+        </div>
+        <button class="btn btn-primary" onclick="daStep2()">Next: Damage Details →</button>
+      </div>
+    </div>
+
+    <div id="da-step2" style="display:none">
+      <div class="section-hdr">Physical Inspection</div>
+      <div class="field-group">
+        <label>IOT Working</label>
+        <select id="da-iot"><option value="Yes">✅ Yes</option><option value="No">❌ No</option><option value="Not Present">Not Present</option></select>
+      </div>
+      <div class="field-group">
+        <label>Motor — TriEV's?</label>
+        <select id="da-motor"><option value="Yes">✅ Yes</option><option value="No">❌ No</option></select>
+      </div>
+      <div class="field-group">
+        <label>Controller Working</label>
+        <select id="da-ctrl"><option value="Yes">✅ Yes</option><option value="No">❌ No</option></select>
+      </div>
+      <div class="field-group">
+        <label>Motor Number (if replaced)</label>
+        <input type="text" id="da-motor-no" placeholder="Optional">
+      </div>
+      <div class="field-group">
+        <label>Tyre Condition</label>
+        <select id="da-tyre"><option value="Good">✅ Good</option><option value="Worn">⚠️ Worn</option><option value="Punctured">❌ Punctured</option><option value="Flat">Flat</option></select>
+      </div>
+      <div class="field-group">
+        <label>Puncture Count</label>
+        <input type="number" id="da-puncture" value="0" min="0" max="4">
+      </div>
+      <div class="section-hdr">Damaged Parts Selection</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Select all damaged parts. Category is auto-filtered by OEM.</p>
+      <div class="parts-selector" id="da-parts-selector"></div>
+      <div id="da-selected-chips" class="selected-parts"></div>
+      <div id="da-damage-summary" class="damage-summary" style="display:none"></div>
+      <div class="field-group" style="margin-top:16px">
+        <label>Remarks</label>
+        <textarea id="da-remarks" placeholder="Additional observations..."></textarea>
+      </div>
+      <button class="btn btn-success" onclick="submitDA()">✅ Submit Damage Assessment</button>
+      <button class="btn btn-ghost" onclick="daBack()" style="margin-top:8px">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAMAGE TICKET LIST -->
+<div id="damage-list" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>📋 Damage Tickets</h1>
+  </div>
+  <div class="content">
+    <input type="search" class="search-box" id="da-search" placeholder="Search ticket ID or chassis..." oninput="filterDA()">
+    <div class="tabs" id="da-status-tabs">
+      <div class="tab active" onclick="filterDAStatus('',this)">All</div>
+      <div class="tab" onclick="filterDAStatus('Open',this)">Open</div>
+      <div class="tab" onclick="filterDAStatus('Assigned',this)">Assigned</div>
+      <div class="tab" onclick="filterDAStatus('RFD',this)">RFD</div>
+    </div>
+    <div id="da-list-content"><div class="loading"><div class="spinner"></div><span>Loading tickets...</span></div></div>
+  </div>
+</div>
+
+<!-- REPAIR QUEUE -->
+<div id="repair-queue" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>🔧 Repair Queue</h1>
+  </div>
+  <div class="content">
+    <div id="repair-queue-content"><div class="loading"><div class="spinner"></div><span>Loading...</span></div></div>
+  </div>
+</div>
+
+<!-- REPAIR DETAIL / WORK SCREEN -->
+<div id="repair-work" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="showScreen('repair-queue')">←</span>
+    <h1>🔧 Repair Work</h1>
+  </div>
+  <div class="content" id="repair-work-content"></div>
+</div>
+
+<!-- QC SCREEN -->
+<div id="qc-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>🔍 QC Inspection</h1>
+  </div>
+  <div class="content">
+    <div id="qc-queue-list"><div class="loading"><div class="spinner"></div><span>Loading QC queue...</span></div></div>
+  </div>
+</div>
+
+<!-- QC FORM -->
+<div id="qc-form" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="showScreen('qc-screen')">←</span>
+    <h1>🔍 QC Checklist</h1>
+  </div>
+  <div class="content" id="qc-form-content"></div>
+</div>
+
+<!-- IOT SCREEN -->
+<div id="iot-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>📡 IOT Check</h1>
+  </div>
+  <div class="content">
+    <div id="iot-queue-list"><div class="loading"><div class="spinner"></div><span>Loading IOT queue...</span></div></div>
+  </div>
+</div>
+
+<!-- RECOVERY SCREEN -->
+<div id="recovery-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>🚨 Recovery Tickets</h1>
+  </div>
+  <div class="content">
+    <div class="tabs">
+      <div class="tab active" onclick="loadRecovery('Police Impound',this)">Impound</div>
+      <div class="tab" onclick="loadRecovery('Hard Recovery',this)">Recovery</div>
+      <div class="tab" onclick="loadRecovery('Theft',this)">Theft</div>
+    </div>
+    <div id="recovery-list"><div class="loading"><div class="spinner"></div><span>Loading...</span></div></div>
+  </div>
+</div>
+
+<!-- RAISE RECOVERY TICKET -->
+<div id="raise-recovery" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="showScreen('recovery-screen')">←</span>
+    <h1>🚨 Raise Recovery Ticket</h1>
+  </div>
+  <div class="content">
+    <div class="field-group">
+      <label>Case Type</label>
+      <select id="rc-type" onchange="updateRecoveryForm()">
+        <option value="Police Impound">Police Impound</option>
+        <option value="Hard Recovery">Hard Recovery</option>
+        <option value="Theft">Theft / FIR</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label>Chassis Number</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="rc-chassis" placeholder="Enter Chassis No" style="flex:1;text-transform:uppercase">
+        <button class="btn btn-primary btn-sm" onclick="rcLookup()">🔍</button>
+      </div>
+    </div>
+    <div id="rc-vehicle-info" style="display:none" class="detail-section">
+      <div class="detail-row"><span>Reg No</span><span id="rc-reg-no">—</span></div>
+      <div class="detail-row"><span>OEM</span><span id="rc-oem">—</span></div>
+    </div>
+    <div class="field-group">
+      <label>Rider ID</label>
+      <input type="text" id="rc-rider" placeholder="Enter Rider ID">
+    </div>
+    <!-- Dynamic fields based on type -->
+    <div id="rc-impound-fields">
+      <div class="field-group"><label>Police Station</label><input type="text" id="rc-ps" placeholder="Station name"></div>
+      <div class="field-group"><label>Date of Impound</label><input type="date" id="rc-impound-date"></div>
+      <div class="field-group"><label>Location</label><input type="text" id="rc-imp-loc" placeholder="Location"></div>
+    </div>
+    <div id="rc-recovery-fields" style="display:none">
+      <div class="field-group"><label>Reason for Recovery</label><textarea id="rc-reason" placeholder="Reason..."></textarea></div>
+      <div class="field-group"><label>Last Known Location</label><input type="text" id="rc-loc" placeholder="Location"></div>
+    </div>
+    <div id="rc-theft-fields" style="display:none">
+      <div class="field-group"><label>Theft Details</label><textarea id="rc-theft" placeholder="Describe theft..."></textarea></div>
+      <div class="field-group"><label>FIR Filed</label><select id="rc-fir"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+      <div class="field-group"><label>FIR Number</label><input type="text" id="rc-fir-no" placeholder="FIR No (if filed)"></div>
+    </div>
+    <div class="field-group"><label>Remarks</label><textarea id="rc-remarks" placeholder="Additional notes..."></textarea></div>
+    <button class="btn btn-danger" onclick="submitRecovery()">🚨 Raise Recovery Ticket</button>
+  </div>
+</div>
+
+<!-- RUNNING REPAIR QUEUE (for technicians) -->
+<div id="running-queue" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>⚡ Running Repairs</h1>
+  </div>
+  <div class="content">
+    <div id="rr-queue-content"><div class="loading"><div class="spinner"></div><span>Loading...</span></div></div>
+  </div>
+</div>
+
+<!-- INVENTORY VIEW -->
+<div id="inventory-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>📦 Inventory</h1>
+  </div>
+  <div class="content">
+    <input type="search" class="search-box" id="inv-search" placeholder="Search parts..." oninput="filterInventory()">
+    <div id="inv-content"><div class="loading"><div class="spinner"></div><span>Loading inventory...</span></div></div>
+  </div>
+</div>
+
+<!-- INSURANCE SCREEN -->
+<div id="insurance-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>🛡 Insurance Cases</h1>
+  </div>
+  <div class="content">
+    <div id="ins-queue-list"><div class="loading"><div class="spinner"></div><span>Loading...</span></div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD / ANALYTICS -->
+<div id="dashboard-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>📊 Dashboard</h1>
+  </div>
+  <div class="content">
+    <div id="dash-content"><div class="loading"><div class="spinner"></div><span>Loading dashboard...</span></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- RUNNING REPAIR PUBLIC FORM (QR access — no login) -->
+<!-- ═══════════════════════════════════════════ -->
+<div id="running-public" class="screen">
+  <div class="topbar"><h1>⚡ TriEV Running Repair</h1></div>
+  <div class="content">
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('en',this)">English</button>
+      <button class="lang-btn" onclick="setLang('hi',this)">हिंदी</button>
+    </div>
+    <div id="rr-pub-submitted" style="display:none;text-align:center;padding:40px">
+      <div style="font-size:64px;margin-bottom:16px">✅</div>
+      <h2 id="rr-pub-thanks" style="margin-bottom:8px">Ticket Submitted!</h2>
+      <p id="rr-pub-ticket-id" style="color:var(--primary);font-size:18px;font-weight:700;margin-bottom:12px"></p>
+      <p id="rr-pub-msg" style="color:var(--text2);font-size:13px">Technician will attend shortly.</p>
+      <button class="btn btn-primary" onclick="resetPublicForm()" style="margin-top:20px">Submit Another</button>
+    </div>
+    <div id="rr-pub-form">
+      <div class="detail-section" style="margin-bottom:16px">
+        <div class="detail-row"><span id="pub-hub-lbl">Hub</span><span id="pub-hub-val" style="color:var(--primary);font-weight:700"></span></div>
+        <div class="detail-row"><span id="pub-date-lbl">Date & Time</span><span id="pub-dt-val" style="color:var(--text2)"></span></div>
+      </div>
+      <div class="field-group"><label id="pub-name-lbl">Your Name / आपका नाम</label>
+        <input type="text" id="pub-name" placeholder="Enter your name"></div>
+      <div class="field-group"><label id="pub-mobile-lbl">Mobile Number / मोबाइल नंबर</label>
+        <input type="tel" id="pub-mobile" placeholder="10-digit mobile" maxlength="10"></div>
+      <div class="field-group"><label id="pub-rider-lbl">Rider ID / राइडर आईडी</label>
+        <input type="text" id="pub-rider" placeholder="Enter Rider ID"></div>
+      <div class="field-group"><label id="pub-chassis-lbl">Vehicle Chassis No / चेसिस नंबर</label>
+        <input type="text" id="pub-chassis" placeholder="Enter chassis number" style="text-transform:uppercase"></div>
+      <div class="field-group">
+        <label id="pub-issues-lbl">Issue(s) / समस्या चुनें</label>
+        <div id="pub-issues-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"></div>
+      </div>
+      <div class="field-group">
+        <label id="pub-other-lbl">Other Issue / अन्य समस्या</label>
+        <input type="text" id="pub-other" placeholder="Describe other issue...">
+      </div>
+      <button class="btn btn-success" onclick="submitPublicRR()">✅ <span id="pub-submit-lbl">Submit Complaint</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- PARTS REQUESTS SCREEN -->
+<div id="parts-req-screen" class="screen">
+  <div class="topbar">
+    <span class="back" onclick="goHome()">←</span>
+    <h1>📦 Parts Requests</h1>
+  </div>
+  <div class="content">
+    <div id="pr-content"><div class="loading"><div class="spinner"></div><span>Loading...</span></div></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG — Replace with your deployed Apps Script URL
+// ═══════════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/a/macros/triev.in/s/AKfycbxNwiQUahdPkZupiAv9LfvVajUrofgRmFo_Yl1qd9zw-5-Dicdciw25vhAR9dQoeAJy_A/exec';
+
+const HUBS = ['Indirapuram','Chhatarpur','Matiala','Gurgaon'];
+
+const RUNNING_ISSUES = [
+  'Brake Shoe','Brake Wire Change','Brake Drum Plate',
+  'Wheel Stuck','Vehicle On/Off Issue','Tyre',
+  'Horn','Lights','Switches','Wheel Rim',
+  'PP / ABS Parts','Handle / T-Handle','Cluster Meter',
+  'Ignition Lock','Seat Lock','Battery Issue','Charger Issue',
+  'Suspension','Chain / Belt','Other'
+];
+
+const QC_CHECKLIST = [
+  'Brakes working properly','All lights functional','Horn working',
+  'Tyre condition OK','Suspension check','Handle alignment',
+  'Seat & seat lock OK','Body panels secured','No loose wiring',
+  'Throttle response normal','Dashboard cluster working',
+  'IOT device secured','Vehicle cleaned','Test ride done',
+];
+
+// PARTS CATALOG — embedded from your Parts_Catalog.csv
+const PARTS_CATALOG = {"Ampere":{"ABS Spare Parts":[{"id":"TRI_AMP_0103","code":"BHBBK00023","name":"HANDLE BAR-M-P"},{"id":"TRI_AMP_0116","code":"BPLGB00424","name":"FRONT PANEL TOP-GLOSSY BLACK-ABS-P"},{"id":"TRI_AMP_0117","code":"BPLGW00509","name":"MAG-FRONT PANEL LH-ABS-GLACIAL WHITE DM"},{"id":"TRI_AMP_0118","code":"BPLGW00510","name":"MAG-FRONT PANEL RH-ABS-GLACIAL WHITE DM"},{"id":"TRI_AMP_0119","code":"BPLGW00517","name":"MAG-PROTECTION BOARD LH-ABS-G WHITE DM"},{"id":"TRI_AMP_0120","code":"BPLGW00518","name":"MAG-PROTECTION BOARD RH-ABS-G WHITE DM"},{"id":"TRI_AMP_0174","code":"SP-000000000074","name":"FRONT FENDER-ABS-GLACIAL WHITE DMWO-Panint"},{"id":"TRI_AMP_0175","code":"SP-000000000075","name":"MAG-FRONT PANEL RH-ABS WO PAINT"},{"id":"TRI_AMP_0176","code":"SP-000000000076","name":"MAG-FRONT PANEL LH-ABS WO PAINT"},{"id":"TRI_AMP_0177","code":"SP-000000000077","name":"FRONT PANEL TOP ABS WO PAINT"},{"id":"TRI_AMP_0178","code":"SP-000000000078","name":"MAG-PROTECTION BOARD RH-ABS WO PAINT"},{"id":"TRI_AMP_0179","code":"SP-000000000079","name":"MAG-PROTECTION BOARD LH-ABS WO PAINT"},{"id":"TRI_AMP_0180","code":"SP-000000000080","name":"FRONT PANEL DECORATIVE PLATE WO PAIN"},{"id":"TRI_AMP_0181","code":"SP-000000000119","name":"MAG-SIDE PANEL RH-ABS-GLACIAL WHITE DMWO-Panint"},{"id":"TRI_AMP_0182","code":"SP-000000000121","name":"MAG-SIDE PANEL LH-ABS-GLACIAL WHITE DMWO-Panint"},{"id":"TRI_AMP_0183","code":"SP-000000000122","name":"INST CLUSTER COVER FRONT-GLOSSY BLK-EXWO-Panint"},{"id":"TRI_AMP_0184","code":"SP-000000000123","name":"REAR PANEL TOP-GLOSSY BLACK-ABS-PWO-Panint"},{"id":"TRI_AMP_0185","code":"SP-000000000124","name":"HEAD LIGHT DECORATIVE PLATE-GLOSSY BLKWO-Panint"},{"id":"TRI_AMP_0223","code":"VP-000000042800","name":"FRONT FENDER-ABS-GLACIAL WHITE DM"}],"Consumables":[{"id":"TRI_AMP_0005","code":"BACMC00017","name":"First Aid Kit"},{"id":"TRI_AMP_0006","code":"BAVSF00004","name":"AIR VALVE-TS1630-TUBELESS-TRITON-REAR"},{"id":"TRI_AMP_0007","code":"BAVSF00005","name":"AIR VALVE-PVR 70-TUBELESS-FRONT/REAR"},{"id":"TRI_AMP_0015","code":"BBRBK00071","name":"MAGNUS/ZEAL-FRONT BRAKE SHOE"},{"id":"TRI_AMP_0016","code":"BBRBK00072","name":"MAGNUS/ZEAL-REAR BRAKE SHOE"},{"id":"TRI_AMP_0017","code":"BBRBK00077","name":"FRONT BRAKE ASSY-M"},{"id":"TRI_AMP_0018","code":"BBRBK00079","name":"BRAKE LEVER RH-ALU BLK PC"},{"id":"TRI_AMP_0019","code":"BBRBK00082","name":"MAGNUS/ZEAL-REAR BRAKE PANEL"},{"id":"TRI_AMP_0102","code":"BFTZP00116","name":"Zeal-Reflector Mounting Clamp DM"},{"id":"TRI_AMP_0107","code":"BLTNA00057","name":"MAGNUS-NUMBER PLATE LAMP"},{"id":"TRI_AMP_0111","code":"BMRBK00004","name":"REAR VIEW MIRROR-SRVH-452LR-BLK"},{"id":"TRI_AMP_0114","code":"BPKBK00001","name":"Cable Tie-250mm"},{"id":"TRI_AMP_0141","code":"BRBBK00001","name":"REO/ZEAL - CENTER STAND RUBBER BUSH-DM"},{"id":"TRI_AMP_0142","code":"BRBBK00046","name":"HANDLEBAR SPACER-M1"},{"id":"TRI_AMP_0143","code":"BRBBK00047","name":"GRIP-LH-M1"},{"id":"TRI_AMP_0144","code":"BRROR00002","name":"REFLECTOR ORANGE"},{"id":"TRI_AMP_0145","code":"BRRRD00001","name":"Reflector Red"},{"id":"TRI_AMP_0148","code":"BSRGB00013","name":"MAG LOGO-GLOSSY BLACK-2D DECAL-LH"},{"id":"TRI_AMP_0149","code":"BSRGB00014","name":"MAG LOGO-GLOSSY BLACK-2D DECAL-RH"},{"id":"TRI_AMP_0150","code":"BSRNA00148","name":"VEHICLE-WATER-WASH-WARNING-STCKR-GLOSSY"},{"id":"TRI_AMP_0151","code":"BSRNA00155","name":"FAME-II LOGO-M/Z/P/N1"},{"id":"TRI_AMP_0152","code":"BSRRD00020","name":"STICKER-WARRENTY"},{"id":"TRI_AMP_0154","code":"BSTBK00023","name":"MAGNUS SEAT ASSY- BLACK"},{"id":"TRI_AMP_0166","code":"BTYBK00017","name":"Tyre 90/90-12"},{"id":"TRI_AMP_0170","code":"GEMBRK0001","name":"LH Lever Kit"},{"id":"TRI_AMP_0171","code":"GEMBRK0015","name":"Lever RH"},{"id":"TRI_AMP_0192","code":"VP-000000029545","name":"USER MANUAL QR STICKER"},{"id":"TRI_AMP_0232","code":"VP-000000049449","name":"LV HANDLEBAR SWITCH PIGTAIL_MAGNUS"},{"id":"TRI_AMP_0242","code":"VP-000000055274","name":"CBS Assembly"}],"Electrical Spare Parts":[{"id":"TRI_AMP_0021","code":"BELNA00016","name":"HORN"},{"id":"TRI_AMP_0022","code":"BELNA00077","name":"FLASHER WITH BUZZER 12V"},{"id":"TRI_AMP_0023","code":"BELNA00238","name":"USB CHARGER-5V-3A"},{"id":"TRI_AMP_0024","code":"BELNA00260","name":"BATTERY MASTER DOCK-SWAPPABLE-M"},{"id":"TRI_AMP_0025","code":"BELNA00269","name":"THROTTLE-RH-M1"},{"id":"TRI_AMP_0104","code":"BLSNA00017","name":"MAGNUS-LOCK SET-DM"},{"id":"TRI_AMP_0105","code":"BLTNA00035","name":"MAGNUS HS-LUGGAGE BOX LIGHT WITH SWITCH"},{"id":"TRI_AMP_0106","code":"BLTNA00056","name":"MAGNUS-HEAD LAMP DM"},{"id":"TRI_AMP_0108","code":"BLTNA00059","name":"MAGNUS HS-INDICATOR LH ASSY-DM"},{"id":"TRI_AMP_0109","code":"BLTNA00060","name":"MAGNUS HS-INDICATOR RH ASSY-DM"},{"id":"TRI_AMP_0110","code":"BLTNA00061","name":"MAGNUS-TAIL LAMP-DM"},{"id":"TRI_AMP_0112","code":"BMTBK00022","name":"HUB MOTOR-12 INCH"},{"id":"TRI_AMP_0155","code":"BSWNA00002","name":"START-SWITCH MODULE"},{"id":"TRI_AMP_0156","code":"BSWNA00014","name":"LV HANDLEBAR SWITCH PIGTAIL"},{"id":"TRI_AMP_0157","code":"BSWNA00015","name":"ZEAL/MAGNUS-EX/PWR-SIDESTAND-REED-SWITCH"},{"id":"TRI_AMP_0158","code":"BSWNA00016","name":"HEAD LIGHT DIMMER SWITCH-DM"},{"id":"TRI_AMP_0159","code":"BSWNA00017","name":"TURN INDICATOR SWITCH-DM"},{"id":"TRI_AMP_0160","code":"BSWNA00018","name":"REVERSE SWITCH-DM"},{"id":"TRI_AMP_0161","code":"BSWNA00019","name":"HORN SWITCH-DM"},{"id":"TRI_AMP_0162","code":"BSWNA00020","name":"HEAD LIGHT ON-OFF SWITCH-DM"},{"id":"TRI_AMP_0163","code":"BSWNA00021","name":"IGNITION SWITCH-DM"},{"id":"TRI_AMP_0164","code":"BSWNA00023","name":"TWO WAY MODE SWITCH-DM"},{"id":"TRI_AMP_0187","code":"VP-000000010420","name":"DC_CONVERTER_NXG"},{"id":"TRI_AMP_0188","code":"VP-000000016814","name":"AUX BATTERY_LIVGAURD"},{"id":"TRI_AMP_0189","code":"VP-000000017134","name":"CLAMP_WIRING_HARNESS"},{"id":"TRI_AMP_0191","code":"VP-000000017350","name":"SPRING_WIRE_DIA_3.2"},{"id":"TRI_AMP_0196","code":"VP-000000030989","name":"DC-DC CONVERTOR MTG BKT MAGNUS 100"},{"id":"TRI_AMP_0228","code":"VP-000000049175","name":"MAGNUS INST CLUSTER SUNMOBILITY"},{"id":"TRI_AMP_0230","code":"VP-000000049180","name":"LV WIRRING HARNESS"},{"id":"TRI_AMP_0231","code":"VP-000000049181","name":"DE: HV WIRRING HARNESS"},{"id":"TRI_AMP_0245","code":"VP-000000055433","name":"Controller 48V 1.5KW SM"}],"Metal Spare Parts":[{"id":"TRI_AMP_0002","code":"BACBK00102","name":"MAGNUS-PILLION FOOTREST LH-DM"},{"id":"TRI_AMP_0003","code":"BACBK00103","name":"MAGNUS-PILLION FOOTREST RH-DM"},{"id":"TRI_AMP_0004","code":"BACBK00123","name":"TOOL KIT-M/Z"},{"id":"TRI_AMP_0008","code":"BAXZP00013","name":"Axle-M12*227 HEX FLANGE HEAD"},{"id":"TRI_AMP_0009","code":"BBGNA00014","name":"MAG-FORK STEM RACER-ID30-CH STEEL"},{"id":"TRI_AMP_0010","code":"BBGNA00018","name":"MAG-BOTTOM RACER CUP-CH STEEL"},{"id":"TRI_AMP_0011","code":"BBGNA00019","name":"MAG-TOP RACER CUP-CH STEEL"},{"id":"TRI_AMP_0012","code":"BBGNA00020","name":"20X4MM MAG-RACER BALL&CAGE-4MM-TOP"},{"id":"TRI_AMP_0013","code":"BBGNA00021","name":"14X6.35MAG-RACER BALL 6.35MM-BEARING-BTM"},{"id":"TRI_AMP_0014","code":"BBRBK00070","name":"BRAKE SYSTEM FRONT-DRUM-M"},{"id":"TRI_AMP_0020","code":"BCSBK00003","name":"Magnus Li-Center stand"},{"id":"TRI_AMP_0026","code":"BFKBK00018","name":"MAGNUS FRONT FORK T STERM DM"},{"id":"TRI_AMP_0027","code":"BFKBK00025","name":"MAGNUS HS-FRONT FORK LEG RH-DM"},{"id":"TRI_AMP_0058","code":"BFSZP00079","name":"Bolt- M6*15 Button Head allen"},{"id":"TRI_AMP_0059","code":"BFSZP00274","name":"PLAIN WASHER M8-STL-17X9X1.6T-ZP"},{"id":"TRI_AMP_0060","code":"BFSZP00341","name":"ZEAL/REO-RACER NUT-M24X3 HEX 32 MM-YZP"},{"id":"TRI_AMP_0061","code":"BFSZP00344","name":"AXLE BUSH-4.5XID12.5XOD20-ZP"},{"id":"TRI_AMP_0062","code":"BFSZP00346","name":"NUMBER PLATE BUSH-8XID6XOD10"},{"id":"TRI_AMP_0063","code":"BFSZP00348","name":"MAGNUS HS-MOTOR AXLE WASHER"},{"id":"TRI_AMP_0064","code":"BFSZP00353","name":"LOCK WASHER 1 D28 T4MM"},{"id":"TRI_AMP_0065","code":"BFSZP00355","name":"C TYPE MOTOR CLAMP T4MM"},{"id":"TRI_AMP_0066","code":"BFSZP00356","name":"ANTI WASHER T5.8MM"},{"id":"TRI_AMP_0067","code":"BFSZP00371","name":"Screw-M4.2*12 Star Head DM"},{"id":"TRI_AMP_0068","code":"BFSZP00372","name":"Screw-M4.8*16 Star Head DM"},{"id":"TRI_AMP_0069","code":"BFSZP00376","name":"Bolt-M6*12 H13.2 Star Head DM"},{"id":"TRI_AMP_0070","code":"BFSZP00377","name":"Bolt-M6*16 H16 Star Head DM"},{"id":"TRI_AMP_0071","code":"BFSZP00379","name":"WASHER-M6-OD18XID6.3XT1.2-STEEL-ZP DM"},{"id":"TRI_AMP_0072","code":"BFSZP00380","name":"Bolt-M6*12 H10 Hex Flange Head DM"},{"id":"TRI_AMP_0073","code":"BFSZP00381","name":"Bolt-M6*16 H10 Hex Flange Head DM"},{"id":"TRI_AMP_0074","code":"BFSZP00382","name":"Bolt-M10*30 H14 Hex Flange Head DM"},{"id":"TRI_AMP_0075","code":"BFSZP00383","name":"Bolt-M10*40 H14 Hex Flange Head DM"},{"id":"TRI_AMP_0076","code":"BFSZP00388","name":"Bolt-M6*20 H10 Hex Flange Head DM"},{"id":"TRI_AMP_0077","code":"BFSZP00392","name":"BOLT-M6*30 H10 HEX FLANGE HEAD DM"},{"id":"TRI_AMP_0078","code":"BFSZP00394","name":"Nut-M12 H17 Hex Head Metal Lock DM"},{"id":"TRI_AMP_0079","code":"BFSZP00395","name":"Main Stand Collar-D17.5*14.8 L11mm DM"},{"id":"TRI_AMP_0080","code":"BFSZP00396","name":"Bolt-M8*45 H10 Hex Flange Head DM"},{"id":"TRI_AMP_0081","code":"BFSZP00415","name":"Nut M10 H14 Lock nut DM"},{"id":"TRI_AMP_0082","code":"BFSZP00418","name":"Bolt M6*25 H10 Hex flange head DM"},{"id":"TRI_AMP_0083","code":"BFSZP00419","name":"Nut-M6 H10 Hex Flange Head DM"},{"id":"TRI_AMP_0084","code":"BFSZP00422","name":"Bolt-M8*30 H12 Hex Flange Head DM"},{"id":"TRI_AMP_0085","code":"BFSZP00423","name":"Bolt-M6*20 H8 Hex/Star flange DM"},{"id":"TRI_AMP_0086","code":"BFSZP00434","name":"Washer-\u00c3\u02dc30*\u00c3\u02dc16.5*2 Steel DM"},{"id":"TRI_AMP_0087","code":"BFSZP00437","name":"PANEL CLIP-ZINC PLATED DM"},{"id":"TRI_AMP_0088","code":"BFSZP00447","name":"SCREW-M4.2*19 H9 STAR HEAD DM"},{"id":"TRI_AMP_0089","code":"BFSZP00455","name":"BOLT M10*1.25*50MM HEX FLANGE HEAD HALF"},{"id":"TRI_AMP_0090","code":"BFSZP00456","name":"HANDLE BAR COLLAR  BUSH M10"},{"id":"TRI_AMP_0091","code":"BFSZP00460","name":"BOLT-M10*1.25*24 H17 HEX STEP-M6 TAP-DM"},{"id":"TRI_AMP_0092","code":"BFSZP00463","name":"NUT-M16 H24-HEX FLANGE LOCKNUT-DM"},{"id":"TRI_AMP_0093","code":"BFSZP00466","name":"BOLT-M3*0.5*35 STAR HEAD"},{"id":"TRI_AMP_0094","code":"BFSZP00539","name":"M5X12-BOLT HEAD-PC"},{"id":"TRI_AMP_0095","code":"BFSZP00540","name":"M5-PLAIN WASHER-PC"},{"id":"TRI_AMP_0096","code":"BFSZP00541","name":"M5-SPRING WASHER-PC"},{"id":"TRI_AMP_0097","code":"BFSZP00548","name":"AXLE  BUSH RH-OD20*ID12.5*L32.5"},{"id":"TRI_AMP_0098","code":"BFTBK00086","name":"MAGNUS HS-FR NUMBER PLATE MTG BKT-STL-BL"},{"id":"TRI_AMP_0099","code":"BFTBK00155","name":"CABLE GUIDE-M"},{"id":"TRI_AMP_0100","code":"BFTBK00230","name":"FRONT FENDER UNDER BRACKET ASSY-STL-PC-P"},{"id":"TRI_AMP_0101","code":"BFTBK00252","name":"FRONT FENDER BRACKET ASSY"},{"id":"TRI_AMP_0113","code":"BPHBK00007","name":"MAGNUS-PILLION HANDLE-ALUM-BK"},{"id":"TRI_AMP_0146","code":"BSLBK00007","name":"Magnus/zeal-Seat Latch DM"},{"id":"TRI_AMP_0147","code":"BSPZP00002","name":"MAGNUS SIDE STAND SPRING - DM"},{"id":"TRI_AMP_0153","code":"BSSBK00008","name":"MAGNUS-SIDE STAND-STL-BK PC"},{"id":"TRI_AMP_0165","code":"BSXNA00010","name":"REAR SHOCKER-310MM-BK-W/NEW SEAL"},{"id":"TRI_AMP_0168","code":"FS-000000000517","name":"M6*30_SOCKET_HEAD_BOLT"},{"id":"TRI_AMP_0194","code":"VP-000000030987","name":"SUSPENSION MOUNT BKT RH ASSY_MAGNUS 100"},{"id":"TRI_AMP_0195","code":"VP-000000030988","name":"SUSPENSION MOUNT BKT LH ASSY_MAGNUS 100"},{"id":"TRI_AMP_0199","code":"VP-000000033848","name":"FRONT FORK LEG LH"},{"id":"TRI_AMP_0200","code":"VP-000000033849","name":"FR WHEEL RIM-12''"},{"id":"TRI_AMP_0201","code":"VP-000000033861","name":"AUX BATTERY MOUNTING BRACKET BOTTOM"},{"id":"TRI_AMP_0202","code":"VP-000000033865","name":"Seat lock"},{"id":"TRI_AMP_0203","code":"VP-000000042606","name":"PILLION FOOTREST SUPPORT BKT"},{"id":"TRI_AMP_0205","code":"VP-000000042627","name":"PILLION FOOTREST MTG ASSY LH"},{"id":"TRI_AMP_0207","code":"VP-000000042630","name":"PILLION FOOTREST MTG ASSY RH"},{"id":"TRI_AMP_0210","code":"VP-000000042640","name":"PILLION FOOTREST SUPPORT BKT RH"},{"id":"TRI_AMP_0221","code":"VP-000000042797","name":"M12*312 SWING ARM AXLE BOLT"}],"PP Spare Parts":[{"id":"TRI_AMP_0029","code":"BFMCP00003","name":"VIN NUMBER MOUNTING BRACKET"},{"id":"TRI_AMP_0041","code":"BFMCP00023","name":"FOOT BOARD BRACKET-01"},{"id":"TRI_AMP_0042","code":"BFMCP00026","name":"LUGGAGE BOX MOUNT BRACKET ASSEMBLY"},{"id":"TRI_AMP_0043","code":"BFMCP00027","name":"FRONT CHASSIS BRACKET"},{"id":"TRI_AMP_0044","code":"BFMCP00030","name":"FOOT BOARD MOUNTING BRACKET ASSEMBLY-03"},{"id":"TRI_AMP_0045","code":"BFMCP00032","name":"FOOT BOARD MOUNTING BRACKET ASSEMBLY-02"},{"id":"TRI_AMP_0050","code":"BFMCP00037","name":"REAR FENDER MOUNT BRACKET ASSEMBLY LH"},{"id":"TRI_AMP_0121","code":"BPPBK00024","name":"MAG EX/PWR-INS CLUSTER COVER RR-PP BLACK"},{"id":"TRI_AMP_0122","code":"BPPBK00042","name":"MAGNUS-FRONT LOWER MUDGUARD-PP DM"},{"id":"TRI_AMP_0123","code":"BPPBK00044","name":"MAGNUS-PROTECTION BOARD BOTTOM LH-PP DM"},{"id":"TRI_AMP_0124","code":"BPPBK00045","name":"MAGNUS-PROTECTION BOARD BOTTOM RH-PP DM"},{"id":"TRI_AMP_0125","code":"BPPBK00048","name":"MAGNUS-SIDE PANEL BOTTOM LH-PP DM"},{"id":"TRI_AMP_0126","code":"BPPBK00049","name":"MAGNUS-SIDE PANEL BOTTOM RH-PP DM"},{"id":"TRI_AMP_0127","code":"BPPBK00063","name":"REO/ZEAL-SWING ARM COVER LH-PP-BLACK DM"},{"id":"TRI_AMP_0128","code":"BPPBK00064","name":"REO/ZEAL-SWING ARM COVER RH-PP-BLACK DM"},{"id":"TRI_AMP_0129","code":"BPPBK00067","name":"MAG-GLOVE BOX CONNECTOR-DM"},{"id":"TRI_AMP_0130","code":"BPPBK00069","name":"MAGNUS-FOOT BOARD DM"},{"id":"TRI_AMP_0131","code":"BPPBK00075","name":"REAR FENDER-MAGNUS 2021-PP"},{"id":"TRI_AMP_0132","code":"BPPBK00078","name":"MAGNUS-LUGGAGE BOX-PP-BLACK"},{"id":"TRI_AMP_0133","code":"BPPBK00081","name":"INNER HUGGER-PP BK"},{"id":"TRI_AMP_0134","code":"BPPBK00082","name":"LUGG-BOX FRONT COVER-PP-BK"},{"id":"TRI_AMP_0135","code":"BPPBK00083","name":"LUGG-BOX-FRONT COVER-LID-PP-BK"},{"id":"TRI_AMP_0136","code":"BPPBK00087","name":"MAG/PWR-BAG HOOK-PP-BLACK"},{"id":"TRI_AMP_0137","code":"BPPBK00088","name":"MAG/PWR-FRAME NUMBER COVER-PP-BLACK"},{"id":"TRI_AMP_0138","code":"BPPBK00138","name":"CLUSTER COVER TOP-PP-M"},{"id":"TRI_AMP_0139","code":"BPPBK00139","name":"GLOVE BOX PANEL-M_P"},{"id":"TRI_AMP_0140","code":"BPPWT00079","name":"FORK RACER DUST CAP-PP"}]},"Motovolt":{"ABS Spare Parts":[{"id":"TRI_MVT_0001","code":"MSD600050","name":"HEAD COWL FRONT-ABS-PUMA BLACK"},{"id":"TRI_MVT_0002","code":"MSD600051","name":"HEAD COWL FRONT-ABS-LIGHTING GREY"},{"id":"TRI_MVT_0003","code":"MSD600052","name":"HEAD COWL FRONT-ABS-GALAXY RED"},{"id":"TRI_MVT_0004","code":"MSD600053","name":"HEAD COWL FRONT-ABS-CANARY YELLOW"},{"id":"TRI_MVT_0005","code":"MSD600054","name":"HEAD COWL FRONT-ABS-BLUE JAY"},{"id":"TRI_MVT_0006","code":"MSD600055","name":"HEAD COWL FRONT-ABS-DOVE WHITE"},{"id":"TRI_MVT_0007","code":"MSD600070","name":"FRONT APRON-ABS-PUMA BLACK"},{"id":"TRI_MVT_0008","code":"MSD600071","name":"FRONT APRON-ABS-LIGHTING GREY"},{"id":"TRI_MVT_0009","code":"MSD600072","name":"FRONT APRON-ABS-GALAXY RED"},{"id":"TRI_MVT_0010","code":"MSD600073","name":"FRONT APRON-ABS-CANARY YELLOW"},{"id":"TRI_MVT_0011","code":"MSD600074","name":"FRONT APRON-ABS-BLUE JAY"},{"id":"TRI_MVT_0012","code":"MSD600075","name":"FRONT APRON-ABS-DOVE WHITE"},{"id":"TRI_MVT_0013","code":"MSD600080","name":"FRONT MUDGUARD-ABS-PUMA BLACK"},{"id":"TRI_MVT_0014","code":"MSD600081","name":"FRONT MUDGUARD-ABS-LIGHTING GREY"},{"id":"TRI_MVT_0015","code":"MSD600082","name":"FRONT MUDGUARD-ABS-GALAXY RED"},{"id":"TRI_MVT_0016","code":"MSD600083","name":"FRONT MUDGUARD-ABS-CANARY YELLOW"},{"id":"TRI_MVT_0017","code":"MSD600084","name":"FRONT MUDGUARD-ABS-BLUE JAY"},{"id":"TRI_MVT_0018","code":"MSD600085","name":"FRONT MUDGUARD-ABS-DOVE WHITE"}],"Consumables":[{"id":"TRI_MVT_0048","code":"MSD300004","name":"REAR DRUM BRAKE COVER SET 130MM"},{"id":"TRI_MVT_0049","code":"MSD800025","name":"REAR BRAKE SHOES"},{"id":"TRI_MVT_0050","code":"MSD800026","name":"REAR SHOES SPRINGS"},{"id":"TRI_MVT_0051","code":"MSD300005","name":"FRONT DRUM BRAKE SET 130MM"},{"id":"TRI_MVT_0052","code":"MSD800023","name":"FRONT BRAKE SHOES"},{"id":"TRI_MVT_0075","code":"MSD500014","name":"Tyre 90/90-12"},{"id":"TRI_MVT_0076","code":"MSD800002","name":"FRONT AIR INLET VALVE (PVR-70)"},{"id":"TRI_MVT_0077","code":"MSD800003","name":"REAR AIR INLET VALVE(TS-1532)"},{"id":"TRI_MVT_0080","code":"MSD200008","name":"REAR REFLECTOR-KM-206"},{"id":"TRI_MVT_0081","code":"MSD200009","name":"FRONT REFLECTOR-KM-101"},{"id":"TRI_MVT_0092","code":"MSD100129","name":"FRONT BRAKE CABLE RH"},{"id":"TRI_MVT_0093","code":"MSD100130","name":"CBS BRAKE CABLE LH"},{"id":"TRI_MVT_0094","code":"MSD100131","name":"REAR BRAKE CABLE LH"},{"id":"TRI_MVT_0099","code":"MSD300040","name":"BRAKE LEVER ASSY LH (Lever +Yok+Cutoff Switch)"},{"id":"TRI_MVT_0100","code":"MSD300041","name":"BRAKE LEVER ASSY RH (Lever +Yok+Cutoff Switch)"},{"id":"TRI_MVT_0101","code":"MSD300047","name":"Brake Lever LH"},{"id":"TRI_MVT_0102","code":"MSD300048","name":"Brake Lever RH"},{"id":"TRI_MVT_0103","code":"MSD300043","name":"Yok with Bolt LH"},{"id":"TRI_MVT_0104","code":"MSD300044","name":"Yok with Bolt RH"},{"id":"TRI_MVT_0105","code":"MSD300045","name":"Brake Lever Spring RH"},{"id":"TRI_MVT_0106","code":"MSD300046","name":"Brake Lever Spring LH"},{"id":"TRI_MVT_0129","code":"MSD800017","name":"REAR VIEW MIRROR LH"},{"id":"TRI_MVT_0130","code":"MSD800018","name":"REAR VIEW MIRROR RH"},{"id":"TRI_MVT_0131","code":"MSD800006","name":"HELMET"},{"id":"TRI_MVT_0132","code":"MSD800001","name":"FIRST AID KIT"},{"id":"TRI_MVT_0133","code":"MSD800005","name":"TOOL KIT"},{"id":"TRI_MVT_0134","code":"MSD500019","name":"Rubber Bush SM F"},{"id":"TRI_MVT_0135","code":"MSD500020","name":"Rubber Bush SM R"},{"id":"TRI_MVT_0136","code":"MSD500022","name":"FOAM BOTTOM PLATE"},{"id":"TRI_MVT_0137","code":"MSD100173","name":"FRONT BRAKE COVER BUSH"},{"id":"TRI_MVT_0138","code":"MSD100112","name":"CENTER STAND SUPPORT BUSH"},{"id":"TRI_MVT_0139","code":"MSD100095","name":"CONCAVE WASHER"},{"id":"TRI_MVT_0140","code":"MSD600231","name":"BATTERY SPACE COVER"},{"id":"TRI_MVT_0158","code":"MSD700075","name":"FRONT STICKER-PANTONE BLACK C-PANTONE YELLOW C"},{"id":"TRI_MVT_0159","code":"MSD500013","name":"RUBBER BUSH-OD25-T-26MM (CENTRE STAND)"},{"id":"TRI_MVT_0160","code":"MSD800036","name":"FOOT BOARD LH STICKER-PANTONE BLACK C- PANTONE YELLOW C"},{"id":"TRI_MVT_0161","code":"MSD800037","name":"FOOT BOARD RH STICKER-PANTONE BLACK C- PANTONE YELLOW C"},{"id":"TRI_MVT_0162","code":"MSD800051","name":"FOOT BOARD LH STICKER-PANTONE BLACK C- PANTONE YELLOW C"},{"id":"TRI_MVT_0163","code":"MSD800052","name":"FOOT BOARD RH STICKER-PANTONE BLACK C- PANTONE YELLOW C"},{"id":"TRI_MVT_0164","code":"MSD800041","name":"FOOT BOARD STICKER LH-PANTONE 7540C- PANTONE 021C"},{"id":"TRI_MVT_0165","code":"MSD800042","name":"FOOT BOARD STICKER RH-PANTONE 7540C- PANTONE 021C"},{"id":"TRI_MVT_0166","code":"MSD800022","name":"HIGH VOLATGE STICKER"},{"id":"TRI_MVT_0167","code":"MED500204","name":"GROMMATE 26\""},{"id":"TRI_MVT_0168","code":"MMMS0123","name":"KEY CHAIN"},{"id":"TRI_MVT_0169","code":"MSD100172","name":"REAR BRAKE COVER MTG BUSH"},{"id":"TRI_MVT_0170","code":"MSD700016","name":"M10X1.5 Dome Cap Nut P8.8"},{"id":"TRI_MVT_0171","code":"MSD700022","name":"LN Button Head Cap Screw-M5 x 12mm"},{"id":"TRI_MVT_0172","code":"MSD700024","name":"LN bolt full Thread M5-1 x 25"},{"id":"TRI_MVT_0173","code":"MSD700025","name":"LN bolt full Thread M6-1 x 16 P6.8"},{"id":"TRI_MVT_0174","code":"MSD700035","name":"M5 Nylon Insert Hex Lock Nuts"},{"id":"TRI_MVT_0175","code":"MSD700038","name":"FLAT WASHER-(ID-6.4 OD-16 T-1.6)mm"},{"id":"TRI_MVT_0176","code":"MSD700039","name":"Flat Washer ID-5.5, OD-10mm THICK-2mm"},{"id":"TRI_MVT_0177","code":"MSD700040","name":"LN bolt full Thread M6-1 x 20 P6.8"},{"id":"TRI_MVT_0178","code":"MSD700045","name":"LN bolt full Thread M6-1 x 30 P6.8"},{"id":"TRI_MVT_0179","code":"MSD700042","name":"LN bolt full Thread M6-1 x 35 P6.8"},{"id":"TRI_MVT_0180","code":"MSD700043","name":"M6-1.0 Flange Nut P-6.8"},{"id":"TRI_MVT_0181","code":"MSD700041","name":"HEX flange half thread bolt M10-1.5 x 55-P10.9"},{"id":"TRI_MVT_0182","code":"MSD500016","name":"RUBBER WASHER-(ID-6.4 OD-18 T-3)mm"},{"id":"TRI_MVT_0183","code":"MSD700010","name":"Plated Phillips Truss Head Machine Screw- M6 x 10MM"},{"id":"TRI_MVT_0184","code":"MSD700053","name":"PLASTIC WASHER - (ID-6MM, OD-12MM, T-4MM )"},{"id":"TRI_MVT_0185","code":"MSD700049","name":"M10 HEX Flange Nut - P8.8"},{"id":"TRI_MVT_0186","code":"MSD700047","name":"METAL WASHER M12 ( ID-13MM, OD-24MM, T- 3MM )"},{"id":"TRI_MVT_0187","code":"MSD700052","name":"METAL WASHER-(ID-6.4 OD-12 T-1.6)mm"},{"id":"TRI_MVT_0188","code":"MSD700055","name":"M5 X 16 Phillips Countersunk (csk) Head Screws"},{"id":"TRI_MVT_0189","code":"MSD200053","name":"CABLE GLAND- PG11"},{"id":"TRI_MVT_0190","code":"MSG500001","name":"SILICONE DRAIN VALVE"},{"id":"TRI_MVT_0191","code":"MSD700057","name":"HEX. SOCKET BUTTON HEAD SCREW-M5 x 16mm"}],"Electrical Spare Parts":[{"id":"TRI_MVT_0107","code":"MSD200059","name":"Cutoff Switch"},{"id":"TRI_MVT_0108","code":"MSD200037","name":"Cutoff Switch Wire"},{"id":"TRI_MVT_0109","code":"MSD200019","name":"IGNITION SWITCH"},{"id":"TRI_MVT_0110","code":"MSD200018","name":"HEADLIGHT"},{"id":"TRI_MVT_0111","code":"MSD200002","name":"TAIL LAMP-LM103"},{"id":"TRI_MVT_0112","code":"MSD200003","name":"INDICATOR-M-315"},{"id":"TRI_MVT_0113","code":"MSD200050","name":"WIRING HARNESS- MVS7 PFG1001707(SUN MOBILITY)"},{"id":"TRI_MVT_0114","code":"MSD200029","name":"HORN"},{"id":"TRI_MVT_0115","code":"MSD200004","name":"USB PORT"},{"id":"TRI_MVT_0116","code":"MSD200033","name":"FLASHER"},{"id":"TRI_MVT_0117","code":"MSD200074","name":"DC-DC CONVERTER (NAPINO)"},{"id":"TRI_MVT_0118","code":"MSD200073","name":"CONTROLLER 60A (SPR EMF) MVS7"},{"id":"TRI_MVT_0119","code":"MSD200048","name":"BLDC MOTOR 48V 1.5kW"},{"id":"TRI_MVT_0120","code":"MSD200011","name":"SIDE STAND SENSOR"},{"id":"TRI_MVT_0121","code":"MSD200049","name":"LCD DISPLAY (SUN MOBILITY)"},{"id":"TRI_MVT_0122","code":"MSD200034","name":"2G-VCU PLUS(TCQ212X)"},{"id":"TRI_MVT_0123","code":"MSD200013","name":"COMBINATION SWITCH LH"},{"id":"TRI_MVT_0124","code":"MSD500015","name":"COMBINATION SWITCH GRIP LH"},{"id":"TRI_MVT_0125","code":"MSD200014","name":"COMBINATION SWITCH RH"},{"id":"TRI_MVT_0126","code":"MSD500018","name":"COMBINATION SWITCH GRIP RH"},{"id":"TRI_MVT_0127","code":"MSD200052","name":"DIU - 2030010108"},{"id":"TRI_MVT_0128","code":"MSD200051","name":"Chagori connector - 2050130037(SUN MOBILITY)"}],"Metal Spare Parts":[{"id":"TRI_MVT_0053","code":"MSD800024","name":"FRONT SHOES SPRINGS"},{"id":"TRI_MVT_0054","code":"MSD100173","name":"FRONT BRAKE COVER BUSH"},{"id":"TRI_MVT_0055","code":"MSD100112","name":"CENTER STAND SUPPORT BUSH"},{"id":"TRI_MVT_0056","code":"MSD100095","name":"CONCAVE WASHER"},{"id":"TRI_MVT_0057","code":"MSD100176","name":"FRONT WHEEL AXLE & NUT-(M12X1.75X215)MM"},{"id":"TRI_MVT_0058","code":"MSD100177","name":"REAR WHEEL AXLE & NUT-(M12X1.75X290)MM"},{"id":"TRI_MVT_0059","code":"MSD300012","name":"SEAT LATCH 58MM"},{"id":"TRI_MVT_0060","code":"MSD100124","name":"FRONT SEAT LATCH CABLE"},{"id":"TRI_MVT_0061","code":"MSD300013","name":"SEAT LATCH-48mm"},{"id":"TRI_MVT_0062","code":"MSD100123","name":"REAR SEAT LATCH CABLE"},{"id":"TRI_MVT_0063","code":"MSD100208","name":"REAR SEAT HINGE NEW TYPE"},{"id":"TRI_MVT_0064","code":"MSD100092","name":"SEAT LOCK BRKT COMP"},{"id":"TRI_MVT_0065","code":"MSD100090","name":"FRONT SEAT HINGE"},{"id":"TRI_MVT_0066","code":"MSD100180","name":"FRONT NUMBER PLATE BRACKET"},{"id":"TRI_MVT_0067","code":"MSD100097","name":"VCU BRACKET"},{"id":"TRI_MVT_0068","code":"MSD400003","name":"CUP CONE SET"},{"id":"TRI_MVT_0069","code":"MESD40011","name":"FRONT FORK LH"},{"id":"TRI_MVT_0070","code":"MESD40012","name":"FRONT FORK RH"},{"id":"TRI_MVT_0071","code":"MSD100093","name":"FRONT MUDGUARD MTG CLAMP"},{"id":"TRI_MVT_0072","code":"MSD300006","name":"REAR SUSPENSION"},{"id":"TRI_MVT_0073","code":"MSD300011","name":"T-STEM"},{"id":"TRI_MVT_0074","code":"MSD300009","name":"RIM-2.15\"X12\""},{"id":"TRI_MVT_0078","code":"MSD300007","name":"FOOT REST-LH"},{"id":"TRI_MVT_0079","code":"MSD300008","name":"FOOT REST-RH"},{"id":"TRI_MVT_0082","code":"MSD100113","name":"SIDE STAND"},{"id":"TRI_MVT_0083","code":"MSD800016","name":"SIDE STAND SPRING"},{"id":"TRI_MVT_0084","code":"MSD100087","name":"SIDE STAND BOLT"},{"id":"TRI_MVT_0085","code":"MSD100100","name":"CENTER STAND"},{"id":"TRI_MVT_0086","code":"MSD800015","name":"CENTER STAND SPRING"},{"id":"TRI_MVT_0087","code":"MSD100190","name":"MAIN FRAME"},{"id":"TRI_MVT_0088","code":"MSD100163","name":"SWING ARM"},{"id":"TRI_MVT_0089","code":"MSD100119","name":"GRAB HANDLE"},{"id":"TRI_MVT_0090","code":"MSD100080","name":"HANDLE BAR COMP"},{"id":"TRI_MVT_0095","code":"MSD100098","name":"FRONT MUDGUARD STAY"},{"id":"TRI_MVT_0096","code":"MSD800073","name":"Front Wheel Bearing"},{"id":"TRI_MVT_0141","code":"MSD700018","name":"Phillips Machine Truss Head Screws Bolts M6-1 x 16"},{"id":"TRI_MVT_0142","code":"MSD700019","name":"Phillips Machine Truss Head Screws Bolts M6-1 x 20"},{"id":"TRI_MVT_0143","code":"MSD700020","name":"Phillips Machine Truss Head Screws Bolts M6-1 x 30"},{"id":"TRI_MVT_0144","code":"MSD700021","name":"Phillips Machine Truss Head Screws Bolts M6-1 x 40"},{"id":"TRI_MVT_0145","code":"MSD700026","name":"LN bolt half Thread M6-1 x 75 P6.8"},{"id":"TRI_MVT_0146","code":"MSD700027","name":"Hex Flange full Thread M6-1 x 12-P6.8"},{"id":"TRI_MVT_0147","code":"MSD700028","name":"Hex Flange full Thread M6-1 x 16-P6.8"},{"id":"TRI_MVT_0148","code":"MSD700029","name":"Hex Flange full Thread M6-1 x 30-P6.8"},{"id":"TRI_MVT_0149","code":"MSD700030","name":"Hex Flange Full Thread Bolt M10-1.5 x 30-P8.8"},{"id":"TRI_MVT_0150","code":"MSD700031","name":"HEX half thread bolt M10-1.5 x 40-P10.9"},{"id":"TRI_MVT_0151","code":"MSD700032","name":"HEX flange half thread bolt M10-1.5 x 50-P10.9"},{"id":"TRI_MVT_0152","code":"MSD700033","name":"HEX flange half thread bolt-M12-1.75 x 45-P10.9"},{"id":"TRI_MVT_0153","code":"MSD700036","name":"M6 Nylon Lock Nut Inserts Serrated Hex Lock"},{"id":"TRI_MVT_0154","code":"MSD700037","name":"M10 Nylon Lock Flange Nut Inserts Serrated Hex Lock-P8.8"},{"id":"TRI_MVT_0155","code":"MSD800067","name":"SIDE LH MVS7 STICKER-PANTONE 7540C-PANTONE 021C"},{"id":"TRI_MVT_0156","code":"MSD800068","name":"SIDE RH MVS7 STICKER-PANTONE 7540C-PANTONE 021C"},{"id":"TRI_MVT_0157","code":"MSD800069","name":"FRONT STICKER-PANTONE 7540C-PANTONE 021C"}],"PP Spare Parts":[{"id":"TRI_MVT_0031","code":"MSD600060","name":"HEAD COWL REAR-PP"},{"id":"TRI_MVT_0032","code":"MSD600090","name":"INNER PANEL"},{"id":"TRI_MVT_0033","code":"MSD600100","name":"GLOVE BOX"},{"id":"TRI_MVT_0034","code":"MSD600110","name":"FRONT COVER"},{"id":"TRI_MVT_0035","code":"MSD600120","name":"FOOT BOARD"},{"id":"TRI_MVT_0036","code":"MSD600130","name":"BOTTOM COVER"},{"id":"TRI_MVT_0037","code":"MSD600160","name":"BATTERY TOP LID"},{"id":"TRI_MVT_0038","code":"MSD600180","name":"PILLION COVER"},{"id":"TRI_MVT_0039","code":"MSD600200","name":"REAR COVER"},{"id":"TRI_MVT_0040","code":"MSD600210","name":"REAR MUDGUARD"},{"id":"TRI_MVT_0041","code":"MSD600230","name":"HUGGER"},{"id":"TRI_MVT_0042","code":"MSD600220","name":"VIN COVER"},{"id":"TRI_MVT_0043","code":"MSD800007","name":"FRONT SEAT ASSEMBLY"},{"id":"TRI_MVT_0044","code":"MSD800008","name":"REAR SEAT ASSEMBLY"},{"id":"TRI_MVT_0045","code":"MSD500011","name":"FLOOR MAT"},{"id":"TRI_MVT_0046","code":"MSD600006","name":"BAG HOOK FRONT"},{"id":"TRI_MVT_0047","code":"MSD600007","name":"BAG HOOK REAR"}]},"Shema":{"ABS Spare Parts":[{"id":"TRI_SES_0001","code":"ABS0001","name":"ABS Handle Bar"},{"id":"TRI_SES_0002","code":"ABS0002","name":"ABS Side Body Cover LH"},{"id":"TRI_SES_0003","code":"ABS0003","name":"ABS Side Body Cover RH"},{"id":"TRI_SES_0004","code":"ABS0004","name":"ABS Decorative Cover"},{"id":"TRI_SES_0005","code":"ABS0005","name":"ABS Front Fender"},{"id":"TRI_SES_0006","code":"ABS0006","name":"ABS Main Dash"},{"id":"TRI_SES_0007","code":"ABS0007","name":"ABS Main Dash Cover"},{"id":"TRI_SES_0008","code":"ABS0008","name":"ABS Rear Below Connection"},{"id":"TRI_SES_0009","code":"ABS0009","name":"ABS Side Protection Cover LH"},{"id":"TRI_SES_0010","code":"ABS0010","name":"ABS Side Protection Cover RH"}],"Consumables":[{"id":"TRI_SES_0031","code":"CP0001","name":"Brake Cable Front"},{"id":"TRI_SES_0032","code":"CP0002","name":"Brake Cable Rear"},{"id":"TRI_SES_0033","code":"CP0003","name":"Brake Lever (LH)"},{"id":"TRI_SES_0034","code":"CP0004","name":"Brake Lever (RH)"},{"id":"TRI_SES_0035","code":"CP0005","name":"Brake Lever Disc Type Assembly (RH)"},{"id":"TRI_SES_0036","code":"CP0006","name":"Brake Lever Disc Type Assembly (LH)"},{"id":"TRI_SES_0037","code":"CP0007","name":"Brake Lever Cutoff Switch"},{"id":"TRI_SES_0038","code":"CP0008","name":"Brake Shoe 110 Mm"},{"id":"TRI_SES_0039","code":"CP0009","name":"Brake Shoe 130 Mm"},{"id":"TRI_SES_0040","code":"CP0010","name":"Disc Brake Pad"},{"id":"TRI_SES_0041","code":"CP0011","name":"Break Oil"},{"id":"TRI_SES_0042","code":"CP0012","name":"Throttle LSV"},{"id":"TRI_SES_0043","code":"CP0013","name":"Throttle HSV"},{"id":"TRI_SES_0044","code":"CP0014","name":"Tyre Front"},{"id":"TRI_SES_0045","code":"CP0015","name":"Tyre Rear"},{"id":"TRI_SES_0046","code":"CP0016","name":"Dc Convertor"}],"Electrical Spare Parts":[{"id":"TRI_SES_0080","code":"EP001","name":"Controller HSV"},{"id":"TRI_SES_0081","code":"EP002","name":"Controller LSV"},{"id":"TRI_SES_0082","code":"EP003","name":"Dipper Switch"},{"id":"TRI_SES_0083","code":"EP004","name":"Display Cluster Meter"},{"id":"TRI_SES_0084","code":"EP005","name":"Display Cluster Meter cover"},{"id":"TRI_SES_0085","code":"EP006","name":"Display Cluster Meter Glass"},{"id":"TRI_SES_0086","code":"EP007","name":"Harness"},{"id":"TRI_SES_0087","code":"EP008","name":"Harness Coupler"},{"id":"TRI_SES_0088","code":"EP009","name":"Head Light Assembly"},{"id":"TRI_SES_0089","code":"EP010","name":"Head Light Bulb Holder"},{"id":"TRI_SES_0090","code":"EP011","name":"Head Light Glass"},{"id":"TRI_SES_0091","code":"EP012","name":"Head Light Led Bulb"},{"id":"TRI_SES_0092","code":"EP013","name":"Head Light Switch"},{"id":"TRI_SES_0093","code":"EP014","name":"Horn"},{"id":"TRI_SES_0094","code":"EP015","name":"Horn Switch"},{"id":"TRI_SES_0095","code":"EP016","name":"Indicator Assembly"},{"id":"TRI_SES_0096","code":"EP017","name":"Indicator Bulb"},{"id":"TRI_SES_0097","code":"EP018","name":"Indicator Bulb Holder"},{"id":"TRI_SES_0098","code":"EP019","name":"Indicator Switch"},{"id":"TRI_SES_0099","code":"EP020","name":"FLASHER WITH BUZZER"},{"id":"TRI_SES_0100","code":"EP021","name":"Main Line Key ( Ignition Lock)"},{"id":"TRI_SES_0101","code":"EP022","name":"Motor LSV"},{"id":"TRI_SES_0102","code":"EP023","name":"Motor HSV"},{"id":"TRI_SES_0103","code":"EP024","name":"Parking Light Bulb"},{"id":"TRI_SES_0104","code":"EP025","name":"Tail Light Bulb"},{"id":"TRI_SES_0105","code":"EP026","name":"Tail Light Bulb Holder"},{"id":"TRI_SES_0106","code":"EP027","name":"Tail Light Assembly"}],"Metal Spare Parts":[{"id":"TRI_SES_0047","code":"MP001","name":"Air Valve (12mm)"},{"id":"TRI_SES_0048","code":"MP002","name":"Air Valve (14mm)"},{"id":"TRI_SES_0049","code":"MP003","name":"Bearing Set (Conset)"},{"id":"TRI_SES_0050","code":"MP004","name":"Foot Rest LH"},{"id":"TRI_SES_0051","code":"MP005","name":"Foot Rest RH"},{"id":"TRI_SES_0052","code":"MP006","name":"Bearing 6201"},{"id":"TRI_SES_0053","code":"MP007","name":"Bearing 6204"},{"id":"TRI_SES_0054","code":"MP008","name":"Bearing 6005"},{"id":"TRI_SES_0055","code":"MP009","name":"Handle Bar Metal"},{"id":"TRI_SES_0056","code":"MP010","name":"Main & Side Stand Spring"},{"id":"TRI_SES_0057","code":"MP011","name":"Main Stand"},{"id":"TRI_SES_0058","code":"MP012","name":"Rear Rack Metal"},{"id":"TRI_SES_0059","code":"MP013","name":"Side Stand"},{"id":"TRI_SES_0060","code":"MP014","name":"T Bone"},{"id":"TRI_SES_0061","code":"MP015","name":"Front Axle"},{"id":"TRI_SES_0062","code":"MP016","name":"Rear Axle"},{"id":"TRI_SES_0063","code":"MP017","name":"Swing Arm Metal"},{"id":"TRI_SES_0064","code":"MP018","name":"Suspention Front Lh"},{"id":"TRI_SES_0065","code":"MP019","name":"Suspention Front Rh"},{"id":"TRI_SES_0066","code":"MP020","name":"Suspension Rear Lh"},{"id":"TRI_SES_0067","code":"MP021","name":"Suspention Rear Rh"},{"id":"TRI_SES_0068","code":"MP022","name":"Drum Plate Front 110 Mm"},{"id":"TRI_SES_0069","code":"MP023","name":"Drum Plate Rear 110 Mm"},{"id":"TRI_SES_0070","code":"MP024","name":"Drum Plate Front 130 Mm"},{"id":"TRI_SES_0071","code":"MP025","name":"Drum Plate Rear 130 Mm"},{"id":"TRI_SES_0072","code":"MP026","name":"Drum Plate Patti"},{"id":"TRI_SES_0073","code":"MP027","name":"Chassis"},{"id":"TRI_SES_0074","code":"MP028","name":"Wheel Front"},{"id":"TRI_SES_0075","code":"MP029","name":"Wheel Hub LSV"},{"id":"TRI_SES_0076","code":"MP030","name":"Wheel Hub HSV"},{"id":"TRI_SES_0077","code":"MP031","name":"Seat Assembly"},{"id":"TRI_SES_0078","code":"MP032","name":"Seat lock"},{"id":"TRI_SES_0079","code":"MP033","name":"Seat Cover"}],"PP Spare Parts":[{"id":"TRI_SES_0011","code":"PP0001","name":"PP Handlebar (Ventelation Cover)"},{"id":"TRI_SES_0012","code":"PP0002","name":"PP Main Dash Cover Ventilation"},{"id":"TRI_SES_0013","code":"PP0003","name":"PP Parking Light Cover"},{"id":"TRI_SES_0014","code":"PP0004","name":"PP Rear Fender"},{"id":"TRI_SES_0015","code":"PP0005","name":"PP Rear Side Cover Left"},{"id":"TRI_SES_0016","code":"PP0006","name":"PP Rear Side Cover Right"},{"id":"TRI_SES_0017","code":"PP0007","name":"PP Rear Upper Inner Fender"},{"id":"TRI_SES_0018","code":"PP0008","name":"PP Rear Inner Lower Fender"},{"id":"TRI_SES_0019","code":"PP0009","name":"PP Seat Box"},{"id":"TRI_SES_0020","code":"PP0010","name":"PP Swing Arm Cover Left"},{"id":"TRI_SES_0021","code":"PP0011","name":"PP Swing Arm Cover Right"},{"id":"TRI_SES_0022","code":"PP0012","name":"PP Toolbox Left"},{"id":"TRI_SES_0023","code":"PP0013","name":"PP Tool Box Right"},{"id":"TRI_SES_0024","code":"PP0014","name":"PP Bottom Chassis Cover"},{"id":"TRI_SES_0025","code":"PP0015","name":"PP Gc Body"},{"id":"TRI_SES_0026","code":"PP0016","name":"PP Handle Bar Cover"},{"id":"TRI_SES_0027","code":"PP0017","name":"PP Bottom Cover"},{"id":"TRI_SES_0028","code":"PP0018","name":"PP Foot Board"},{"id":"TRI_SES_0029","code":"PP0019","name":"PP Foot Board Cover"},{"id":"TRI_SES_0030","code":"PP0020","name":"PP Charging Socket Cover"}]}};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let currentUser = null;
+let daVehicle = null;
+let daSelectedParts = [];
+let allDaTickets = [];
+let daStatusFilter = '';
+let allInventory = [];
+let currentLang = 'en';
+let publicHub = '';
+let publicSelectedIssues = [];
+let currentRepairTicket = null;
+let currentQCTicket = null;
+
+// ═══════════════════════════════════════════════════════════
+// APP INIT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('triev_user');
+  if (saved) {
+    currentUser = JSON.parse(saved);
+    showHome();
+  }
+  // Check if this is public QR form
+  const urlParams = new URLSearchParams(window.location.search);
+  const hub = urlParams.get('hub');
+  if (hub) {
+    publicHub = decodeURIComponent(hub);
+    initPublicForm();
+    showScreen('running-public');
+    return;
+  }
+  if (!saved) showScreen('login');
+});
+
+// ═══════════════════════════════════════════════════════════
+// API CALL
+// ═══════════════════════════════════════════════════════════
+async function api(action, params={}) {
+  try {
+    const body = JSON.stringify({ action, ...params });
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    return await res.json();
+  } catch(e) {
+    return { error: 'Network error: ' + e.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCREEN NAV
+// ═══════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  el.scrollTop = 0;
+}
+function goHome() { showScreen('home'); }
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
+async function doLogin() {
+  const mobile = document.getElementById('inp-mobile').value.trim();
+  const pass   = document.getElementById('inp-pass').value.trim();
+  if (!mobile || !pass) { showErr('login-err','Enter mobile and password'); return; }
+
+  document.querySelector('#login .btn').textContent = '⏳ Logging in...';
+  const res = await api('login', { mobile, password: pass });
+  document.querySelector('#login .btn').textContent = '🔐 Login';
+
+  if (res.error) { showErr('login-err', res.error); return; }
+
+  currentUser = res.user;
+  sessionStorage.setItem('triev_user', JSON.stringify(currentUser));
+
+  if (res.firstLogin) {
+    showScreen('change-pass');
+  } else {
+    showHome();
+  }
+}
+
+document.getElementById('inp-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doChangePass() {
+  const np = document.getElementById('cp-new').value;
+  const cf = document.getElementById('cp-confirm').value;
+  if (np.length < 6) { showErr('cp-err','Password must be at least 6 characters'); return; }
+  if (np !== cf) { showErr('cp-err','Passwords do not match'); return; }
+  const res = await api('changePassword', { mobile: currentUser.mobile, newPassword: np });
+  if (res.error) { showErr('cp-err', res.error); return; }
+  toast('Password updated! ✅','success');
+  showHome();
+}
+
+function doLogout() {
+  sessionStorage.removeItem('triev_user');
+  currentUser = null;
+  showScreen('login');
+}
+
+// ═══════════════════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════════════════
+function showHome() {
+  showScreen('home');
+  const u = currentUser;
+  document.getElementById('home-user-name').textContent = 'Hi, ' + u.name;
+  document.getElementById('home-user-hub').textContent = u.hub + ' Hub';
+  document.getElementById('home-user-role').textContent = u.role;
+  document.getElementById('home-hub-badge').textContent = u.hub;
+
+  // Show daily role selector for technicians
+  const techRoles = ['Core Technician','Running Repair Technician','QC Technician'];
+  const isTech = techRoles.some(r => u.role.includes('Technician')) || u.role.includes('Technician');
+  document.getElementById('daily-role-selector').style.display = isTech ? 'block' : 'none';
+
+  buildHomeCards();
+  loadDashboardStats();
+}
+
+function buildHomeCards() {
+  const r = currentUser.role;
+  const allCards = {
+    'damage-form':        { icon:'📋', title:'New Assessment', sub:'Submit vehicle damage', color:'orange', roles:['Advisor'] },
+    'damage-list':        { icon:'📄', title:'DA Tickets', sub:'View all tickets', color:'blue', roles:['Advisor','Hub Manager','Lead Technician','Service Head','Admin','Super Admin','General Manager','City Ops','Cluster Manager','Team Lead'] },
+    'repair-queue':       { icon:'🔧', title:'Repair Queue', sub:'Assign & work repairs', color:'green', roles:['Lead Technician','Core Technician'] },
+    'running-queue':      { icon:'⚡', title:'Running Repairs', sub:'Quick fixes queue', color:'yellow', roles:['Running Repair Technician'] },
+    'qc-screen':          { icon:'🔍', title:'QC Inspection', sub:'Quality check queue', color:'purple', roles:['QC Technician'] },
+    'iot-screen':         { icon:'📡', title:'IOT Check', sub:'IOT & RFD marking', color:'teal', roles:['IOT Manager'] },
+    'raise-recovery':     { icon:'🚨', title:'Raise Ticket', sub:'Recovery/Impound/FIR', color:'red', roles:['Team Lead','Cluster Manager'] },
+    'recovery-screen':    { icon:'🗂', title:'Recovery Cases', sub:'Manage cases', color:'red', roles:['Recovery Manager','Recovery Associate','Team Lead','Cluster Manager','City Ops','Service Head'] },
+    'insurance-screen':   { icon:'🛡', title:'Insurance', sub:'Claims & approvals', color:'teal', roles:['Insurance Manager','Service Head'] },
+    'inventory-screen':   { icon:'📦', title:'Inventory', sub:'Stock levels & logs', color:'green', roles:['Inventory Manager','Lead Technician','Service Head','Admin','Super Admin'] },
+    'parts-req-screen':   { icon:'🔩', title:'Parts Requests', sub:'Approve/reject requests', color:'orange', roles:['Inventory Manager','Lead Technician'] },
+    'dashboard-screen':   { icon:'📊', title:'Dashboard', sub:'Analytics & reports', color:'blue', roles:['Service Head','City Ops','Cluster Manager','General Manager','Data Analyst','Admin','Super Admin','Hub Manager'] },
+  };
+
+  const cards = Object.entries(allCards).filter(([, c]) => {
+    return c.roles.some(cr => r.includes(cr)) || r === 'Super Admin' || r === 'Admin';
+  });
+
+  document.getElementById('home-cards').innerHTML = cards.map(([screen, c]) =>
+    `<div class="home-card ${c.color}" onclick="navTo('${screen}')">
+      <div class="card-icon">${c.icon}</div>
+      <div class="card-title">${c.title}</div>
+      <div class="card-sub">${c.sub}</div>
+    </div>`
+  ).join('');
+}
+
+async function loadDashboardStats() {
+  const hub = currentUser.role === 'Super Admin' || currentUser.role === 'Admin' ? 'ALL' : currentUser.hub;
+  const res = await api('getDashboard', { hub });
+  if (res.error || !res.dashboard) return;
+  const d = res.dashboard;
+  const st = d.damageByStatus || {};
+  const statsEl = document.getElementById('home-stats');
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-num" style="color:var(--warning)">${st['Open']||0}</div><div class="stat-label">Open Tickets</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--success)">${st['RFD']||0}</div><div class="stat-label">RFD Today</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--primary)">${d.todaySubmissions||0}</div><div class="stat-label">Today's DA</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${d.runningRepairOpen||0}</div><div class="stat-label">Running Open</div></div>
+  `;
+}
+
+async function setDailyRole() {
+  const role = document.getElementById('daily-role-select').value;
+  const res = await api('setDailyRole', { mobile: currentUser.mobile, dailyRole: role });
+  if (res.success) toast('Role set: ' + role + ' ✅','success');
+}
+
+function navTo(screen) {
+  switch(screen) {
+    case 'damage-form':    showScreen('damage-form'); break;
+    case 'damage-list':    showScreen('damage-list'); loadDAList(); break;
+    case 'repair-queue':   showScreen('repair-queue'); loadRepairQueue(); break;
+    case 'running-queue':  showScreen('running-queue'); loadRunningQueue(); break;
+    case 'qc-screen':      showScreen('qc-screen'); loadQCQueue(); break;
+    case 'iot-screen':     showScreen('iot-screen'); loadIOTQueue(); break;
+    case 'raise-recovery': showScreen('raise-recovery'); break;
+    case 'recovery-screen':showScreen('recovery-screen'); loadRecovery('Police Impound', document.querySelector('#recovery-screen .tab')); break;
+    case 'insurance-screen':showScreen('insurance-screen'); loadInsuranceQueue(); break;
+    case 'inventory-screen':showScreen('inventory-screen'); loadInventory(); break;
+    case 'parts-req-screen':showScreen('parts-req-screen'); loadPartsRequests(); break;
+    case 'dashboard-screen':showScreen('dashboard-screen'); loadDashboard(); break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DAMAGE ASSESSMENT
+// ═══════════════════════════════════════════════════════════
+async function lookupVehicle() {
+  const chassis = document.getElementById('da-chassis').value.toUpperCase().trim();
+  if (!chassis) { toast('Enter chassis number','error'); return; }
+  const res = await api('lookupVehicle', { chassis });
+  if (res.error) { toast(res.error,'error'); return; }
+  daVehicle = res.vehicle;
+  document.getElementById('da-reg-no').textContent = daVehicle.Reg_No || daVehicle['Reg No'] || '—';
+  document.getElementById('da-model').textContent = daVehicle.Model || '—';
+  document.getElementById('da-oem').textContent = daVehicle.OEM || '—';
+  document.getElementById('da-nbfc').textContent = daVehicle.NBFC || '—';
+  document.getElementById('da-hub-disp').textContent = daVehicle.Hub || currentUser.hub;
+  document.getElementById('da-vehicle-info').style.display = 'block';
+  toast('Vehicle found! ✅','success');
+}
+
+function daStep2() {
+  if (!daVehicle) { toast('Lookup vehicle first','error'); return; }
+  if (!document.getElementById('da-rider-id').value.trim()) { toast('Enter Rider ID','error'); return; }
+  daSelectedParts = [];
+  document.getElementById('da-step1').style.display = 'none';
+  document.getElementById('da-step2').style.display = 'block';
+  buildPartsSelector(daVehicle.OEM || 'Ampere', 'da-parts-selector', 'da');
+}
+
+function daBack() {
+  document.getElementById('da-step1').style.display = 'block';
+  document.getElementById('da-step2').style.display = 'none';
+}
+
+function buildPartsSelector(oem, containerId, prefix) {
+  const catalog = PARTS_CATALOG[oem] || PARTS_CATALOG['Ampere'];
+  const categories = Object.keys(catalog);
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="cat-tabs" id="${prefix}-cat-tabs">
+      ${categories.map((cat,i) => `<div class="cat-tab ${i===0?'active':''}" onclick="switchCat('${oem}','${cat}','${prefix}',this)">${cat.replace(' Spare Parts','').replace('Electrical','Elec').replace('Consumables','Consumable')}</div>`).join('')}
+    </div>
+    <div class="parts-list" id="${prefix}-parts-list"></div>
+  `;
+  showCategoryParts(oem, categories[0], prefix);
+}
+
+function switchCat(oem, cat, prefix, el) {
+  document.querySelectorAll(`#${prefix}-cat-tabs .cat-tab`).forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  showCategoryParts(oem, cat, prefix);
+}
+
+function showCategoryParts(oem, cat, prefix) {
+  const parts = (PARTS_CATALOG[oem] || {})[cat] || [];
+  const list = document.getElementById(`${prefix}-parts-list`);
+  list.innerHTML = parts.map(p => {
+    const isSelected = daSelectedParts.some(s => s.partId === p.id);
+    return `
+      <div class="part-item ${isSelected?'selected':''}" id="${prefix}-part-${p.id}" onclick="togglePart('${p.id}','${p.code}','${escH(p.name)}','${cat}','${oem}','${prefix}')">
+        <div class="part-check">${isSelected?'✓':''}</div>
+        <div style="flex:1">
+          <div class="part-name">${p.name}</div>
+          <div class="part-id">${p.id}</div>
+        </div>
+        ${isSelected ? `<div class="qty-control">
+          <button class="qty-btn" onclick="chQty('${p.id}','${prefix}',-1,event)">−</button>
+          <span class="qty-val" id="${prefix}-qty-${p.id}">${daSelectedParts.find(s=>s.partId===p.id)?.qty||1}</span>
+          <button class="qty-btn" onclick="chQty('${p.id}','${prefix}',1,event)">+</button>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function escH(s) { return (s||'').replace(/'/g,"\'").replace(/"/g,'&quot;'); }
+
+function togglePart(id, code, name, cat, oem, prefix) {
+  const idx = daSelectedParts.findIndex(s => s.partId === id);
+  if (idx >= 0) {
+    daSelectedParts.splice(idx, 1);
+  } else {
+    daSelectedParts.push({ partId:id, partCode:code, partName:name, category:cat, oem, qty:1, unitPrice:0 });
+  }
+  // Re-render current category
+  const currentCat = document.querySelector(`#${prefix}-cat-tabs .cat-tab.active`);
+  if (currentCat) {
+    const catText = currentCat.textContent.trim();
+    // Find matching full category name
+    const fullCat = Object.keys(PARTS_CATALOG[oem]||{}).find(c =>
+      c.replace(' Spare Parts','').replace('Electrical','Elec').replace('Consumables','Consumable') === catText
+    ) || catText;
+    showCategoryParts(oem, fullCat, prefix);
+  }
+  updateSelectedChips(prefix);
+  updateDamageSummary();
+}
+
+function chQty(partId, prefix, delta, e) {
+  e.stopPropagation();
+  const part = daSelectedParts.find(s => s.partId === partId);
+  if (!part) return;
+  part.qty = Math.max(1, (part.qty||1) + delta);
+  const el = document.getElementById(`${prefix}-qty-${partId}`);
+  if (el) el.textContent = part.qty;
+  updateDamageSummary();
+}
+
+function updateSelectedChips(prefix) {
+  const el = document.getElementById(`${prefix}-selected-chips`) || document.getElementById('da-selected-chips');
+  if (!el) return;
+  el.innerHTML = daSelectedParts.map(p =>
+    `<div class="sel-part-chip">
+      <span>${p.partName} ×${p.qty}</span>
+      <span class="remove" onclick="removePart('${p.partId}','${prefix}')">✕</span>
+    </div>`
+  ).join('');
+}
+
+function removePart(partId, prefix) {
+  const idx = daSelectedParts.findIndex(s => s.partId === partId);
+  if (idx >= 0) daSelectedParts.splice(idx, 1);
+  updateSelectedChips(prefix);
+  updateDamageSummary();
+  // Refresh parts list
+  const currentCat = document.querySelector(`#${prefix}-cat-tabs .cat-tab.active`);
+  if (currentCat && daVehicle) {
+    const catText = currentCat.textContent.trim();
+    const oem = daVehicle.OEM || 'Ampere';
+    const fullCat = Object.keys(PARTS_CATALOG[oem]||{}).find(c =>
+      c.replace(' Spare Parts','').replace('Electrical','Elec').replace('Consumables','Consumable') === catText
+    ) || catText;
+    showCategoryParts(oem, fullCat, prefix);
+  }
+}
+
+function updateDamageSummary() {
+  const el = document.getElementById('da-damage-summary');
+  if (!el) return;
+  if (daSelectedParts.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  const motor = document.getElementById('da-motor')?.value;
+  const ctrl  = document.getElementById('da-ctrl')?.value;
+  const n = daSelectedParts.length;
+  let cat = n <= 2 ? 'L1' : n <= 5 ? 'L2' : 'L3';
+  const flags=[];
+  if(motor==='No') flags.push('Motor Replaced');
+  if(ctrl==='No') flags.push('Controller Issue');
+  if(flags.length) cat += ' +' + flags.join(', ');
+
+  const totalAmt = daSelectedParts.reduce((s,p) => s + (p.qty*(p.unitPrice||0)), 0);
+
+  el.innerHTML = `
+    <div class="summary-row"><span>Total Parts Selected</span><span>${n}</span></div>
+    <div class="summary-row"><span>Damage Category</span><span>${cat}</span></div>
+    <div class="summary-row"><span>Damage Amount</span><span>₹${totalAmt.toLocaleString('en-IN')} (update prices in sheet)</span></div>
+  `;
+}
+
+async function submitDA() {
+  if (!daVehicle) { toast('No vehicle loaded','error'); return; }
+  const riderId = document.getElementById('da-rider-id').value.trim();
+  if (!riderId) { toast('Enter Rider ID','error'); return; }
+  if (daSelectedParts.length === 0) { toast('Select at least one damaged part','error'); return; }
+
+  const payload = {
+    hub: daVehicle.Hub || currentUser.hub,
+    advisorMobile: currentUser.mobile,
+    advisorName: currentUser.name,
+    caseType: document.getElementById('da-case-type').value,
+    chassisNo: document.getElementById('da-chassis').value.toUpperCase(),
+    regNo: daVehicle.Reg_No || daVehicle['Reg No'] || '',
+    model: daVehicle.Model || '',
+    oem: daVehicle.OEM || '',
+    nbfc: daVehicle.NBFC || '',
+    riderId,
+    iotWorking: document.getElementById('da-iot').value,
+    motorTriev: document.getElementById('da-motor').value,
+    controllerWorking: document.getElementById('da-ctrl').value,
+    motorNo: document.getElementById('da-motor-no').value,
+    tyreCondition: document.getElementById('da-tyre').value,
+    punctureCount: document.getElementById('da-puncture').value,
+    remarks: document.getElementById('da-remarks').value,
+    damagedParts: JSON.stringify(daSelectedParts),
+  };
+
+  const btn = document.querySelector('#damage-form .btn-success');
+  btn.textContent = '⏳ Submitting...';
+  const res = await api('submitDamage', payload);
+  btn.textContent = '✅ Submit Damage Assessment';
+
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('DA Submitted! Ticket: ' + res.ticketId,'success');
+
+  // Reset form
+  daVehicle = null; daSelectedParts = [];
+  document.getElementById('da-chassis').value = '';
+  document.getElementById('da-vehicle-info').style.display = 'none';
+  document.getElementById('da-step1').style.display = 'block';
+  document.getElementById('da-step2').style.display = 'none';
+  document.getElementById('da-rider-id').value = '';
+  goHome();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DA TICKET LIST
+// ═══════════════════════════════════════════════════════════
+async function loadDAList() {
+  const hub = ['Super Admin','Admin','Service Head','City Ops','General Manager','IOT Manager'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
+  const res = await api('getDamageTickets', { hub });
+  allDaTickets = res.tickets || [];
+  renderDAList();
+}
+
+function renderDAList() {
+  let tickets = allDaTickets;
+  const q = (document.getElementById('da-search')?.value||'').toLowerCase();
+  if (q) tickets = tickets.filter(t => (t.Ticket_ID||'').toLowerCase().includes(q) || (t.Chassis_No||'').toLowerCase().includes(q));
+  if (daStatusFilter) tickets = tickets.filter(t => t.Status === daStatusFilter);
+
+  document.getElementById('da-list-content').innerHTML = tickets.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No tickets found</p>'
+    : tickets.map(t => `
+      <div class="ticket-card" onclick="viewDATicket('${t.Ticket_ID}')">
+        <div class="ticket-header">
+          <span class="ticket-id">${t.Ticket_ID}</span>
+          <span class="status-badge ${statusClass(t.Status)}">${t.Status}</span>
+        </div>
+        <div class="ticket-meta">
+          <span class="tag tag-blue">${t.OEM}</span>
+          <span class="tag tag-orange">${t.Case_Type}</span>
+          <span class="tag tag-purple">${t.Damage_Category||'—'}</span>
+          ${t.Insurance_Required==='Yes'?'<span class="tag tag-teal">🛡 Insurance</span>':''}
+        </div>
+        <div class="ticket-title">${t.Chassis_No}</div>
+        <div class="ticket-sub">Rider: ${t.Rider_ID} · Hub: ${t.Hub} · ₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</div>
+        <div class="ticket-sub" style="margin-top:4px">${fmtDate(t.Submitted_At)}</div>
+      </div>`
+    ).join('');
+}
+
+function filterDA() { renderDAList(); }
+function filterDAStatus(status, el) {
+  daStatusFilter = status;
+  document.querySelectorAll('#da-status-tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDAList();
+}
+
+async function viewDATicket(ticketId) {
+  showScreen('damage-list');
+  toast('Loading ticket...','');
+  const res = await api('getDamageDetail', { ticketId });
+  if (res.error) { toast(res.error,'error'); return; }
+  const t = res.ticket, parts = res.parts || [];
+
+  // For lead tech — show assign option
+  const isLead = currentUser.role === 'Lead Technician';
+  const assignSection = isLead ? `
+    <div class="detail-section">
+      <h3>Assign to Technician</h3>
+      <div class="field-group">
+        <label>Technician Mobile</label>
+        <input type="tel" id="assign-tech-mobile" placeholder="Technician mobile number">
+      </div>
+      <div class="field-group">
+        <label>Technician Name</label>
+        <input type="text" id="assign-tech-name" placeholder="Technician name">
+      </div>
+      <button class="btn btn-primary" onclick="assignTicket('${ticketId}','${t.Chassis_No}')">🔧 Assign Repair</button>
+    </div>` : '';
+
+  document.getElementById('da-list-content').innerHTML = `
+    <button class="btn btn-ghost btn-sm" onclick="loadDAList()" style="margin-bottom:12px">← Back to List</button>
+    <div class="detail-section">
+      <h3>Ticket Info</h3>
+      <div class="detail-row"><span>Ticket ID</span><span>${t.Ticket_ID}</span></div>
+      <div class="detail-row"><span>Status</span><span>${t.Status}</span></div>
+      <div class="detail-row"><span>Category</span><span>${t.Damage_Category||'—'}</span></div>
+      <div class="detail-row"><span>Case Type</span><span>${t.Case_Type}</span></div>
+      <div class="detail-row"><span>Date</span><span>${t.Date}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>Vehicle</h3>
+      <div class="detail-row"><span>Chassis</span><span>${t.Chassis_No}</span></div>
+      <div class="detail-row"><span>Reg No</span><span>${t.Reg_No}</span></div>
+      <div class="detail-row"><span>OEM</span><span>${t.OEM}</span></div>
+      <div class="detail-row"><span>Model</span><span>${t.Model}</span></div>
+      <div class="detail-row"><span>NBFC</span><span>${t.NBFC}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>Inspection</h3>
+      <div class="detail-row"><span>IOT Working</span><span>${t.IOT_Working}</span></div>
+      <div class="detail-row"><span>Motor TriEV</span><span>${t.Motor_TriEV}</span></div>
+      <div class="detail-row"><span>Controller</span><span>${t.Controller_Working}</span></div>
+      <div class="detail-row"><span>Tyre</span><span>${t.Tyre_Condition}</span></div>
+      <div class="detail-row"><span>Punctures</span><span>${t.Puncture_Count||0}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>Damaged Parts (${parts.length})</h3>
+      ${parts.map(p => `<div class="detail-row"><span>${p.Part_Name}</span><span>${p.Category} ×${p.Qty} ₹${Number(p.Total_Price||0).toLocaleString('en-IN')}</span></div>`).join('')}
+      <div class="detail-row" style="font-weight:700"><span>Total Damage</span><span>₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</span></div>
+    </div>
+    ${t.Remarks ? `<div class="detail-section"><h3>Remarks</h3><p style="font-size:13px;color:var(--text2)">${t.Remarks}</p></div>` : ''}
+    ${assignSection}
+  `;
+}
+
+async function assignTicket(ticketId, chassisNo) {
+  const techMobile = document.getElementById('assign-tech-mobile').value.trim();
+  const techName   = document.getElementById('assign-tech-name').value.trim();
+  if (!techMobile || !techName) { toast('Enter technician details','error'); return; }
+  const res = await api('assignRepair', {
+    ticketId, chassisNo, hub: currentUser.hub,
+    leadMobile: currentUser.mobile, leadName: currentUser.name,
+    techMobile, techName,
+  });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Assigned successfully ✅','success');
+  loadDAList();
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPAIR QUEUE & WORK
+// ═══════════════════════════════════════════════════════════
+async function loadRepairQueue() {
+  const res = await api('getMyRepairs', { mobile: currentUser.mobile });
+  const tickets = res.tickets || [];
+  document.getElementById('repair-queue-content').innerHTML = tickets.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No repairs assigned to you</p>'
+    : tickets.map(t => `
+      <div class="ticket-card" onclick="openRepairWork('${t.Ticket_ID}')">
+        <div class="ticket-header">
+          <span class="ticket-id">${t.Ticket_ID}</span>
+          <span class="status-badge ${statusClass(t.Status)}">${t.Status}</span>
+        </div>
+        <div class="ticket-meta">
+          <span class="tag tag-blue">${t.OEM}</span>
+          <span class="tag tag-purple">${t.Damage_Category||'—'}</span>
+        </div>
+        <div class="ticket-title">${t.Chassis_No}</div>
+        <div class="ticket-sub">Rider: ${t.Rider_ID} · ₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</div>
+      </div>`
+    ).join('');
+}
+
+async function openRepairWork(ticketId) {
+  const res = await api('getDamageDetail', { ticketId });
+  if (res.error) { toast(res.error,'error'); return; }
+  currentRepairTicket = res;
+  const t = res.ticket, parts = res.parts || [];
+  const oem = t.OEM || 'Ampere';
+
+  showScreen('repair-work');
+
+  // Reset repair parts selection
+  daSelectedParts = [];
+
+  document.getElementById('repair-work-content').innerHTML = `
+    <div class="detail-section">
+      <h3>Job Card — ${t.Ticket_ID}</h3>
+      <div class="detail-row"><span>Chassis</span><span>${t.Chassis_No}</span></div>
+      <div class="detail-row"><span>OEM</span><span>${t.OEM}</span></div>
+      <div class="detail-row"><span>Status</span><span>${t.Status}</span></div>
+    </div>
+    <div class="detail-section">
+      <h3>Assessed Damage Parts</h3>
+      ${parts.map(p => `<div class="detail-row"><span>${p.Part_Name}</span><span>×${p.Qty}</span></div>`).join('')}
+    </div>
+    <div class="section-hdr">Log Parts Used for Repair</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Select parts you actually used. These will be deducted from inventory.</p>
+    <div class="parts-selector" id="repair-parts-selector"></div>
+    <div id="repair-selected-chips" class="selected-parts"></div>
+    <div class="field-group" style="margin-top:12px">
+      <label>Repair Remarks</label>
+      <textarea id="repair-remarks" placeholder="What was done..."></textarea>
+    </div>
+    <button class="btn btn-warning" onclick="logRepairParts('${ticketId}','${t.Chassis_No}','${oem}')" style="margin-bottom:8px">➕ Log Parts Used</button>
+    <button class="btn btn-success" onclick="completeRepair('${ticketId}','${t.Chassis_No}')">✅ Mark Repair Complete → QC</button>
+
+    <div class="divider"></div>
+    <div class="section-hdr">Start Repair Timer</div>
+    <button class="btn btn-primary btn-sm" onclick="startRepairTimer('${ticketId}','${t.Chassis_No}')">▶ Start Repair</button>
+  `;
+  buildPartsSelector(oem, 'repair-parts-selector', 'repair');
+}
+
+async function startRepairTimer(ticketId, chassisNo) {
+  const res = await api('startRepair', { ticketId, chassisNo, hub: currentUser.hub, techMobile: currentUser.mobile, techName: currentUser.name });
+  if (res.success) toast('Repair started ⏱','success');
+}
+
+async function logRepairParts(ticketId, chassisNo, oem) {
+  if (daSelectedParts.length === 0) { toast('Select parts first','error'); return; }
+  for (const p of daSelectedParts) {
+    await api('addRepairPart', {
+      ticketId, chassisNo, hub: currentUser.hub,
+      techMobile: currentUser.mobile, techName: currentUser.name,
+      partId: p.partId, partCode: p.partCode, partName: p.partName,
+      category: p.category, qty: p.qty, unitPrice: p.unitPrice||0,
+      remarks: document.getElementById('repair-remarks')?.value || '',
+    });
+  }
+  toast(daSelectedParts.length + ' parts logged ✅','success');
+  daSelectedParts = [];
+  updateSelectedChips('repair');
+}
+
+async function completeRepair(ticketId, chassisNo) {
+  const remarks = document.getElementById('repair-remarks')?.value || '';
+  const res = await api('completeRepair', { ticketId, chassisNo, hub: currentUser.hub, techMobile: currentUser.mobile, techName: currentUser.name, remarks });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Repair complete! Moved to QC ✅','success');
+  showScreen('repair-queue'); loadRepairQueue();
+}
+
+// ═══════════════════════════════════════════════════════════
+// QC
+// ═══════════════════════════════════════════════════════════
+async function loadQCQueue() {
+  const res = await api('getQCQueue', { hub: currentUser.hub });
+  const tickets = res.tickets || [];
+  document.getElementById('qc-queue-list').innerHTML = tickets.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No vehicles in QC queue</p>'
+    : tickets.map(t => `
+      <div class="ticket-card" onclick="openQCForm('${t.Ticket_ID}')">
+        <div class="ticket-header"><span class="ticket-id">${t.Ticket_ID}</span><span class="status-badge s-qc">QC Pending</span></div>
+        <div class="ticket-meta"><span class="tag tag-blue">${t.OEM}</span><span class="tag tag-purple">${t.Damage_Category||'—'}</span></div>
+        <div class="ticket-title">${t.Chassis_No}</div>
+        <div class="ticket-sub">${t.Case_Type} · ${t.Hub}</div>
+      </div>`
+    ).join('');
+}
+
+async function openQCForm(ticketId) {
+  const res = await api('getDamageDetail', { ticketId });
+  if (res.error) { toast(res.error,'error'); return; }
+  currentQCTicket = res.ticket;
+  showScreen('qc-form');
+
+  const t = res.ticket;
+  document.getElementById('qc-form-content').innerHTML = `
+    <div class="detail-section">
+      <h3>${t.Ticket_ID} — ${t.Chassis_No}</h3>
+      <div class="detail-row"><span>OEM</span><span>${t.OEM}</span></div>
+      <div class="detail-row"><span>Case Type</span><span>${t.Case_Type}</span></div>
+    </div>
+    <div class="section-hdr">QC Checklist</div>
+    ${QC_CHECKLIST.map((item, i) => `
+      <div class="checklist-item">
+        <label>${i+1}. ${item}</label>
+        <div class="radio-group">
+          <div class="radio-opt" id="qc-pass-${i}" onclick="setQC(${i},'pass')">✅ Pass</div>
+          <div class="radio-opt" id="qc-fail-${i}" onclick="setQC(${i},'fail')">❌ Fail</div>
+          <div class="radio-opt" id="qc-na-${i}" onclick="setQC(${i},'na')">— N/A</div>
+        </div>
+      </div>`
+    ).join('')}
+    <div class="field-group" style="margin-top:16px">
+      <label>Overall Remarks</label>
+      <textarea id="qc-remarks" placeholder="QC observations and notes..."></textarea>
+    </div>
+    <button class="btn btn-success" onclick="submitQC('${ticketId}','${t.Chassis_No}')">✅ Submit QC</button>
+  `;
+  // Initialize checklist state
+  window.qcState = QC_CHECKLIST.map(() => '');
+}
+
+function setQC(idx, val) {
+  window.qcState = window.qcState || QC_CHECKLIST.map(()=>'');
+  window.qcState[idx] = val;
+  ['pass','fail','na'].forEach(v => {
+    const el = document.getElementById(`qc-${v}-${idx}`);
+    if (el) { el.className = 'radio-opt'; if(v===val) el.classList.add(`sel-${v==='na'?'na':v}`); }
+  });
+}
+
+async function submitQC(ticketId, chassisNo) {
+  const state = window.qcState || [];
+  const unfilled = state.findIndex(s => s === '');
+  if (unfilled >= 0) { toast(`Please fill item ${unfilled+1}`,'error'); return; }
+  const hasFail = state.includes('fail');
+  const overallStatus = hasFail ? 'Fail' : 'Pass';
+  const checklistJson = JSON.stringify(QC_CHECKLIST.map((item,i) => ({ item, result: state[i] })));
+  const remarks = document.getElementById('qc-remarks')?.value || '';
+  const res = await api('submitQC', {
+    ticketId, chassisNo, hub: currentUser.hub,
+    qcMobile: currentUser.mobile, qcName: currentUser.name,
+    checklistJson, overallStatus, remarks,
+  });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('QC ' + overallStatus + '! ✅','success');
+  showScreen('qc-screen'); loadQCQueue();
+}
+
+// ═══════════════════════════════════════════════════════════
+// IOT
+// ═══════════════════════════════════════════════════════════
+async function loadIOTQueue() {
+  const res = await api('getIOTQueue', {});
+  const tickets = res.tickets || [];
+  document.getElementById('iot-queue-list').innerHTML = tickets.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No vehicles pending IOT check</p>'
+    : tickets.map(t => `
+      <div class="ticket-card" onclick="openIOTForm('${t.Ticket_ID}','${t.Chassis_No}','${t.Hub}')">
+        <div class="ticket-header"><span class="ticket-id">${t.Ticket_ID}</span><span class="status-badge s-qc">IOT Pending</span></div>
+        <div class="ticket-meta"><span class="tag tag-blue">${t.OEM}</span><span class="tag tag-teal">${t.Hub}</span></div>
+        <div class="ticket-title">${t.Chassis_No}</div>
+        <div class="ticket-sub">${t.Case_Type}</div>
+      </div>`
+    ).join('');
+}
+
+function openIOTForm(ticketId, chassisNo, hub) {
+  document.getElementById('iot-queue-list').innerHTML = `
+    <button class="btn btn-ghost btn-sm" onclick="loadIOTQueue()" style="margin-bottom:12px">← Back</button>
+    <div class="detail-section"><h3>${ticketId} — ${chassisNo}</h3></div>
+    <div class="field-group"><label>IOT Status</label>
+      <select id="iot-status"><option value="Working">✅ Working</option><option value="Not Working">❌ Not Working</option></select></div>
+    <div class="field-group"><label>GPS Working</label>
+      <select id="iot-gps"><option value="Yes">✅ Yes</option><option value="No">❌ No</option></select></div>
+    <div class="field-group"><label>Lock Working</label>
+      <select id="iot-lock"><option value="Yes">✅ Yes</option><option value="No">❌ No</option></select></div>
+    <div class="field-group"><label>Remarks</label><textarea id="iot-remarks" placeholder="IOT observations..."></textarea></div>
+    <button class="btn btn-teal" onclick="submitIOT('${ticketId}','${chassisNo}','${hub}')">📡 Submit IOT Check</button>
+  `;
+}
+
+async function submitIOT(ticketId, chassisNo, hub) {
+  const res = await api('submitIOT', {
+    ticketId, chassisNo, hub,
+    iotMobile: currentUser.mobile, iotName: currentUser.name,
+    iotStatus: document.getElementById('iot-status').value,
+    gpsWorking: document.getElementById('iot-gps').value,
+    lockWorking: document.getElementById('iot-lock').value,
+    remarks: document.getElementById('iot-remarks')?.value||'',
+  });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast(document.getElementById('iot-status').value === 'Working' ? 'RFD Marked! 🚀' : 'IOT Issue logged','success');
+  loadIOTQueue();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RECOVERY
+// ═══════════════════════════════════════════════════════════
+async function loadRecovery(caseType, el) {
+  if (el) {
+    document.querySelectorAll('#recovery-screen .tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+  const hub = ['Recovery Manager','Service Head','City Ops','Admin','Super Admin'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
+  const res = await api('getRecoveryTickets', { hub, caseType });
+  const tickets = res.tickets || [];
+  const isManager = currentUser.role === 'Recovery Manager';
+  document.getElementById('recovery-list').innerHTML = tickets.length === 0
+    ? `<p style="text-align:center;color:var(--text2);padding:40px">No ${caseType} tickets</p>`
+    : tickets.map(t => `
+      <div class="ticket-card">
+        <div class="ticket-header">
+          <span class="ticket-id">${t.Ticket_ID}</span>
+          <span class="status-badge ${t.Status==='Closed'?'s-closed':t.Status==='Assigned'?'s-assigned':'s-open'}">${t.Status}</span>
+        </div>
+        <div class="ticket-meta"><span class="tag tag-red">${t.Case_Type}</span><span class="tag tag-blue">${t.Hub}</span></div>
+        <div class="ticket-title">${t.Chassis_No} — Rider: ${t.Rider_ID}</div>
+        <div class="ticket-sub">${fmtDate(t.Created_At)}</div>
+        ${isManager && t.Status==='Open' ? `
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <input type="tel" id="ra-mob-${t.Ticket_ID}" placeholder="Associate mobile" style="flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px">
+            <button class="btn btn-danger btn-sm" onclick="assignRecovery('${t.Ticket_ID}')">Assign</button>
+          </div>` : ''}
+        ${currentUser.role === 'Recovery Associate' && t.Assigned_To_Mobile === currentUser.mobile ? `
+          <div style="margin-top:10px">
+            <select id="rs-${t.Ticket_ID}" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;margin-bottom:8px">
+              <option>Recovered</option><option>Not Found</option><option>In Progress</option><option>Closed - FIR Filed</option>
+            </select>
+            <input type="number" id="re-${t.Ticket_ID}" placeholder="Expense ₹" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;margin-bottom:8px">
+            <textarea id="rr-${t.Ticket_ID}" placeholder="Resolution notes..." style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;resize:vertical"></textarea>
+            <button class="btn btn-warning btn-sm" onclick="updateRecovery('${t.Ticket_ID}')" style="margin-top:8px;width:100%">Update Case</button>
+          </div>` : ''}
+      </div>`
+    ).join('');
+}
+
+async function assignRecovery(ticketId) {
+  const mobile = document.getElementById(`ra-mob-${ticketId}`)?.value.trim();
+  if (!mobile) { toast('Enter associate mobile','error'); return; }
+  const res = await api('assignRecovery', { ticketId, associateMobile: mobile, associateName: mobile, managerMobile: currentUser.mobile, managerName: currentUser.name });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Assigned ✅','success');
+  loadRecovery('Police Impound', null);
+}
+
+async function updateRecovery(ticketId) {
+  const status     = document.getElementById(`rs-${ticketId}`)?.value;
+  const expense    = document.getElementById(`re-${ticketId}`)?.value;
+  const resolution = document.getElementById(`rr-${ticketId}`)?.value;
+  const res = await api('updateRecovery', { ticketId, status, expense, resolution, mobile: currentUser.mobile, name: currentUser.name });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Updated ✅','success');
+}
+
+function updateRecoveryForm() {
+  const type = document.getElementById('rc-type').value;
+  document.getElementById('rc-impound-fields').style.display  = type==='Police Impound'?'block':'none';
+  document.getElementById('rc-recovery-fields').style.display = type==='Hard Recovery'?'block':'none';
+  document.getElementById('rc-theft-fields').style.display    = type==='Theft'?'block':'none';
+}
+
+async function rcLookup() {
+  const chassis = document.getElementById('rc-chassis').value.toUpperCase().trim();
+  if (!chassis) return;
+  const res = await api('lookupVehicle', { chassis });
+  if (res.error) { toast(res.error,'error'); return; }
+  document.getElementById('rc-reg-no').textContent = res.vehicle.Reg_No || res.vehicle['Reg No'] || '—';
+  document.getElementById('rc-oem').textContent = res.vehicle.OEM || '—';
+  document.getElementById('rc-vehicle-info').style.display = 'block';
+  toast('Vehicle found ✅','success');
+}
+
+async function submitRecovery() {
+  const type = document.getElementById('rc-type').value;
+  const chassis = document.getElementById('rc-chassis').value.toUpperCase().trim();
+  const riderId = document.getElementById('rc-rider').value.trim();
+  if (!chassis || !riderId) { toast('Fill chassis and rider ID','error'); return; }
+  const payload = {
+    hub: currentUser.hub, raisedByMobile: currentUser.mobile, raisedByName: currentUser.name,
+    caseType: type, chassisNo: chassis, riderId,
+    policeStation: document.getElementById('rc-ps')?.value||'',
+    impoundDate: document.getElementById('rc-impound-date')?.value||'',
+    impoundLocation: document.getElementById('rc-imp-loc')?.value||'',
+    recoveryReason: document.getElementById('rc-reason')?.value||'',
+    lastKnownLocation: document.getElementById('rc-loc')?.value||'',
+    theftDetails: document.getElementById('rc-theft')?.value||'',
+    firFiled: document.getElementById('rc-fir')?.value||'No',
+    firNo: document.getElementById('rc-fir-no')?.value||'',
+    remarks: document.getElementById('rc-remarks')?.value||'',
+  };
+  const res = await api('raiseRecoveryTicket', payload);
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Ticket raised: ' + res.ticketId,'success');
+  showScreen('recovery-screen');
+}
+
+// ═══════════════════════════════════════════════════════════
+// RUNNING REPAIR QUEUE (Technician)
+// ═══════════════════════════════════════════════════════════
+async function loadRunningQueue() {
+  const res = await api('getRunningQueue', { hub: currentUser.hub, status: 'Open' });
+  const tickets = res.tickets || [];
+  document.getElementById('rr-queue-content').innerHTML = tickets.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No running repair tickets</p>'
+    : tickets.map(t => `
+      <div class="ticket-card">
+        <div class="ticket-header"><span class="ticket-id">${t.Ticket_ID}</span><span class="status-badge s-open">Open</span></div>
+        <div class="ticket-meta"><span class="tag tag-yellow">Running Repair</span></div>
+        <div class="ticket-title">Rider: ${t.Rider_Name} (${t.Rider_ID})</div>
+        <div class="ticket-sub">Chassis: ${t.Chassis_No}</div>
+        <div class="ticket-sub" style="margin-top:4px;font-weight:600;color:var(--orange)">Issues: ${t.Issues}</div>
+        <div style="margin-top:10px">
+          <textarea id="rr-res-${t.Ticket_ID}" placeholder="Resolution..." style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;resize:vertical;margin-bottom:8px"></textarea>
+          <input type="number" id="rr-time-${t.Ticket_ID}" placeholder="Time taken (mins)" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;margin-bottom:8px">
+          <button class="btn btn-success btn-sm" onclick="closeRR('${t.Ticket_ID}')" style="width:100%">✅ Close Ticket</button>
+        </div>
+      </div>`
+    ).join('');
+}
+
+async function closeRR(ticketId) {
+  const resolution = document.getElementById(`rr-res-${ticketId}`)?.value;
+  const timeTaken  = document.getElementById(`rr-time-${ticketId}`)?.value;
+  if (!resolution) { toast('Enter resolution','error'); return; }
+  const res = await api('closeRunningRepair', { ticketId, resolution, timeTaken, techMobile: currentUser.mobile });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Ticket closed ✅','success');
+  loadRunningQueue();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INVENTORY
+// ═══════════════════════════════════════════════════════════
+async function loadInventory() {
+  const hub = ['Super Admin','Admin','Service Head'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
+  const res = await api('getInventory', { hub });
+  allInventory = res.inventory || [];
+  renderInventory();
+}
+
+function renderInventory() {
+  const q = (document.getElementById('inv-search')?.value||'').toLowerCase();
+  const items = q ? allInventory.filter(i => (i.Part_Name||'').toLowerCase().includes(q) || (i.Part_ID||'').toLowerCase().includes(q)) : allInventory;
+  document.getElementById('inv-content').innerHTML = items.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No inventory data. Add stock in the Inventory sheet.</p>'
+    : items.map(i => {
+        const closing = Number(i.Closing_Stock||0);
+        const reorder = Number(i.Reorder_Level||0);
+        const low = closing <= reorder && reorder > 0;
+        return `<div class="ticket-card" style="${low?'border-color:var(--danger)':''}">
+          <div class="ticket-header">
+            <span class="ticket-id">${i.Part_ID}</span>
+            ${low?'<span class="status-badge" style="background:rgba(239,68,68,.2);color:var(--danger)">⚠ Low</span>':''}
+          </div>
+          <div class="ticket-title">${i.Part_Name}</div>
+          <div class="ticket-meta"><span class="tag tag-blue">${i.OEM}</span><span class="tag tag-grey">${i.Category}</span><span class="tag tag-teal">${i.Hub}</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">
+            <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:8px">
+              <div style="font-size:18px;font-weight:700;color:var(--primary)">${i.Closing_Stock||0}</div>
+              <div style="font-size:10px;color:var(--text3)">CLOSING</div>
+            </div>
+            <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:8px">
+              <div style="font-size:18px;font-weight:700;color:var(--success)">${i.Stock_In||0}</div>
+              <div style="font-size:10px;color:var(--text3)">IN</div>
+            </div>
+            <div style="text-align:center;background:var(--surface2);border-radius:8px;padding:8px">
+              <div style="font-size:18px;font-weight:700;color:var(--orange)">${i.Stock_Used||0}</div>
+              <div style="font-size:10px;color:var(--text3)">USED</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+}
+function filterInventory() { renderInventory(); }
+
+// ═══════════════════════════════════════════════════════════
+// INSURANCE
+// ═══════════════════════════════════════════════════════════
+async function loadInsuranceQueue() {
+  const res = await api('getInsuranceQueue', { hub: 'ALL' });
+  const tickets = res.tickets || [];
+  document.getElementById('ins-queue-list').innerHTML = tickets.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No insurance pending tickets</p>'
+    : tickets.map(t => `
+      <div class="ticket-card">
+        <div class="ticket-header"><span class="ticket-id">${t.Ticket_ID}</span><span class="status-badge s-open">Insurance Pending</span></div>
+        <div class="ticket-meta"><span class="tag tag-orange">${t.Case_Type}</span><span class="tag tag-teal">${t.Hub}</span></div>
+        <div class="ticket-title">${t.Chassis_No}</div>
+        <div class="ticket-sub">Rider: ${t.Rider_ID} · ₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</div>
+        <div style="margin-top:10px">
+          <input type="text" id="ins-claim-${t.Ticket_ID}" placeholder="Claim Number" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;margin-bottom:6px">
+          <input type="number" id="ins-amt-${t.Ticket_ID}" placeholder="Approved Amount ₹" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;margin-bottom:6px">
+          <select id="ins-survey-${t.Ticket_ID}" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:12px;margin-bottom:8px">
+            <option value="Approved">Survey Approved</option><option value="Pending">Survey Pending</option><option value="Rejected">Survey Rejected</option>
+          </select>
+          <button class="btn btn-teal btn-sm" onclick="approveInsurance('${t.Ticket_ID}','${t.Chassis_No}','${t.Rider_ID}','${t.Case_Type}','${t.Hub}')" style="width:100%">🛡 Approve Insurance</button>
+        </div>
+      </div>`
+    ).join('');
+}
+
+async function approveInsurance(ticketId, chassisNo, riderId, caseType, hub) {
+  const claimNo   = document.getElementById(`ins-claim-${ticketId}`)?.value;
+  const amount    = document.getElementById(`ins-amt-${ticketId}`)?.value;
+  const survey    = document.getElementById(`ins-survey-${ticketId}`)?.value;
+  if (!claimNo) { toast('Enter claim number','error'); return; }
+  const res = await api('approveInsurance', {
+    ticketId, chassisNo, riderId, caseType, hub,
+    claimNo, approvalAmount: amount, surveyApproval: survey,
+    managerMobile: currentUser.mobile, managerName: currentUser.name,
+  });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Insurance approved ✅','success');
+  loadInsuranceQueue();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PARTS REQUESTS
+// ═══════════════════════════════════════════════════════════
+async function loadPartsRequests() {
+  const hub = currentUser.role === 'Inventory Manager' ? currentUser.hub : currentUser.hub;
+  const res = await api('getPartsRequests', { hub, status: 'Pending' });
+  const requests = res.requests || [];
+  document.getElementById('pr-content').innerHTML = requests.length === 0
+    ? '<p style="text-align:center;color:var(--text2);padding:40px">No pending parts requests</p>'
+    : requests.map(r => `
+      <div class="ticket-card">
+        <div class="ticket-header"><span class="ticket-id">${r.Request_ID}</span><span class="status-badge s-open">Pending</span></div>
+        <div class="ticket-title">${r.Part_Name}</div>
+        <div class="ticket-sub">Qty: ${r.Qty_Requested} · Tech: ${r.Tech_Name} · Ticket: ${r.Ticket_ID}</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-success btn-sm" onclick="decidePartsReq('${r.Request_ID}','Approved')" style="flex:1">✅ Approve</button>
+          <button class="btn btn-danger btn-sm" onclick="decidePartsReq('${r.Request_ID}','Rejected')" style="flex:1">❌ Reject</button>
+        </div>
+      </div>`
+    ).join('');
+}
+
+async function decidePartsReq(reqId, decision) {
+  const res = await api('approvePartsRequest', { reqId, decision, managerMobile: currentUser.mobile, managerName: currentUser.name });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast(decision + ' ✅','success');
+  loadPartsRequests();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════
+async function loadDashboard() {
+  const hub = ['Super Admin','Admin','Service Head','City Ops','General Manager','Data Analyst'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
+  const res = await api('getDashboard', { hub });
+  if (res.error) { document.getElementById('dash-content').innerHTML = '<p style="color:var(--danger);padding:20px">'+res.error+'</p>'; return; }
+  const d = res.dashboard;
+  const st = d.damageByStatus || {};
+  const cat = d.damageByCategory || {};
+
+  document.getElementById('dash-content').innerHTML = `
+    <div class="detail-section">
+      <h3>Hub: ${d.hub} · ${d.today}</h3>
+    </div>
+    <div class="section-hdr">Damage Tickets by Status</div>
+    <div class="stats-row" style="grid-template-columns:1fr 1fr 1fr">
+      ${Object.entries(st).slice(0,6).map(([s,c]) => `
+        <div class="stat-card"><div class="stat-num" style="font-size:22px">${c}</div><div class="stat-label" style="font-size:10px">${s}</div></div>`
+      ).join('')}
+    </div>
+    <div class="section-hdr">Damage Categories</div>
+    <div class="stats-row" style="grid-template-columns:1fr 1fr 1fr">
+      ${Object.entries(cat).map(([c,n]) => `
+        <div class="stat-card"><div class="stat-num" style="font-size:22px;color:var(--orange)">${n}</div><div class="stat-label" style="font-size:10px">${c}</div></div>`
+      ).join('')}
+    </div>
+    <div class="section-hdr">Today's Activity</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" style="color:var(--primary)">${d.todaySubmissions}</div><div class="stat-label">DA Submissions</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--orange)">${d.runningRepairToday}</div><div class="stat-label">Running Repairs</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${d.recoveryOpen}</div><div class="stat-label">Recovery Open</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--success)">${st['RFD']||0}</div><div class="stat-label">RFD Vehicles</div></div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PUBLIC RUNNING REPAIR FORM (QR / Link)
+// ═══════════════════════════════════════════════════════════
+function initPublicForm() {
+  document.getElementById('pub-hub-val').textContent = publicHub;
+  document.getElementById('pub-dt-val').textContent = new Date().toLocaleString('en-IN');
+  buildPublicIssuesList();
+}
+
+function buildPublicIssuesList() {
+  const hi = currentLang === 'hi';
+  const issuesHindi = [
+    'ब्रेक शू','ब्रेक वायर','ब्रेक ड्रम','पहिया जाम','वाहन चालू/बंद','टायर',
+    'हॉर्न','लाइट','स्विच','व्हील रिम','बॉडी पार्ट्स','हैंडल','क्लस्टर मीटर',
+    'इग्निशन लॉक','सीट लॉक','बैटरी समस्या','चार्जर','सस्पेंशन','चेन/बेल्ट','अन्य'
+  ];
+  const issues = hi ? issuesHindi : RUNNING_ISSUES;
+  document.getElementById('pub-issues-list').innerHTML = issues.map((issue, i) => `
+    <div class="radio-opt" id="pub-issue-${i}" onclick="togglePublicIssue('${RUNNING_ISSUES[i]}',${i})">${issue}</div>
+  `).join('');
+  publicSelectedIssues = [];
+}
+
+function togglePublicIssue(issue, idx) {
+  const el = document.getElementById(`pub-issue-${idx}`);
+  const i = publicSelectedIssues.indexOf(issue);
+  if (i >= 0) { publicSelectedIssues.splice(i,1); el.classList.remove('sel-pass'); }
+  else { publicSelectedIssues.push(issue); el.classList.add('sel-pass'); }
+}
+
+function setLang(lang, btn) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildPublicIssuesList();
+  const hi = lang === 'hi';
+  document.getElementById('pub-name-lbl').textContent = hi ? 'आपका नाम' : 'Your Name';
+  document.getElementById('pub-mobile-lbl').textContent = hi ? 'मोबाइल नंबर' : 'Mobile Number';
+  document.getElementById('pub-rider-lbl').textContent = hi ? 'राइडर आईडी' : 'Rider ID';
+  document.getElementById('pub-chassis-lbl').textContent = hi ? 'चेसिस नंबर' : 'Vehicle Chassis No';
+  document.getElementById('pub-issues-lbl').textContent = hi ? 'समस्या चुनें' : 'Select Issue(s)';
+  document.getElementById('pub-other-lbl').textContent = hi ? 'अन्य समस्या' : 'Other Issue';
+  document.getElementById('pub-submit-lbl').textContent = hi ? 'शिकायत दर्ज करें' : 'Submit Complaint';
+  document.getElementById('pub-hub-lbl').textContent = hi ? 'हब' : 'Hub';
+  document.getElementById('pub-date-lbl').textContent = hi ? 'दिनांक और समय' : 'Date & Time';
+}
+
+async function submitPublicRR() {
+  const name    = document.getElementById('pub-name').value.trim();
+  const mobile  = document.getElementById('pub-mobile').value.trim();
+  const riderId = document.getElementById('pub-rider').value.trim();
+  const chassis = document.getElementById('pub-chassis').value.trim().toUpperCase();
+  const other   = document.getElementById('pub-other').value.trim();
+  if (!name || !mobile || !riderId || !chassis) {
+    toast(currentLang==='hi' ? 'सभी जानकारी भरें' : 'Fill all required fields','error');
+    return;
+  }
+  if (publicSelectedIssues.length === 0 && !other) {
+    toast(currentLang==='hi' ? 'कम से कम एक समस्या चुनें' : 'Select at least one issue','error');
+    return;
+  }
+  const issues = [...publicSelectedIssues, ...(other?[other]:[])].join(', ');
+  const res = await api('submitRunningRepair', {
+    hub: publicHub, riderName: name, riderMobile: mobile, riderId, chassisNo: chassis,
+    issues, otherIssue: other,
+  });
+  if (res.error) { toast(res.error,'error'); return; }
+  document.getElementById('rr-pub-form').style.display = 'none';
+  document.getElementById('rr-pub-submitted').style.display = 'block';
+  document.getElementById('rr-pub-ticket-id').textContent = '🎫 ' + res.ticketId;
+  document.getElementById('rr-pub-thanks').textContent = currentLang==='hi' ? 'शिकायत दर्ज हो गई!' : 'Ticket Submitted!';
+  document.getElementById('rr-pub-msg').textContent = currentLang==='hi' ? 'तकनीशियन जल्द आएंगे।' : 'Technician will attend shortly.';
+}
+
+function resetPublicForm() {
+  document.getElementById('rr-pub-form').style.display = 'block';
+  document.getElementById('rr-pub-submitted').style.display = 'none';
+  document.getElementById('pub-name').value = '';
+  document.getElementById('pub-mobile').value = '';
+  document.getElementById('pub-rider').value = '';
+  document.getElementById('pub-chassis').value = '';
+  document.getElementById('pub-other').value = '';
+  buildPublicIssuesList();
+  document.getElementById('pub-dt-val').textContent = new Date().toLocaleString('en-IN');
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+function statusClass(s) {
+  if(!s) return 's-open';
+  s = s.toLowerCase();
+  if(s.includes('rfd')) return 's-rfd';
+  if(s.includes('repair')) return 's-repair';
+  if(s.includes('qc')||s.includes('iot')) return 's-qc';
+  if(s.includes('assign')) return 's-assigned';
+  if(s.includes('closed')||s.includes('complete')) return 's-closed';
+  return 's-open';
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+  catch(e) { return String(d); }
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+</script>
+</body>
+</html>
