@@ -1774,7 +1774,8 @@ async function submitPartsRequest(ticketId, chassisNo, oem) {
   const results = [];
   for (const p of daSelectedParts) {
     const r = await api('raisePartsRequest', {
-      ticketId, chassisNo,
+      ticketId,
+      chassisNo: chassisNo || currentRepairTicket?.ticket?.Chassis_No || '',
       hub: currentUser.hub,
       techMobile: currentUser.mobile,
       techName: currentUser.name,
@@ -2176,78 +2177,134 @@ async function approveInsurance(ticketId, chassisNo, riderId, caseType, hub) {
 // PARTS REQUESTS
 // ═══════════════════════════════════════════════════════════
 async function loadPartsRequests() {
-  const hub = ['Super Admin','Admin','Service Head'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
-  // Load both Pending and recently decided
-  const [pendRes, allRes] = await Promise.all([
-    api('getPartsRequests', { hub, status: 'Pending' }),
-    api('getPartsRequests', { hub }),
-  ]);
-  const pending = pendRes.requests || [];
-  const all     = (allRes.requests || []).filter(r => r.Status !== 'Pending').slice(0,20);
-
   const el = document.getElementById('pr-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
+  const hub = ['Super Admin','Admin','Service Head','General Manager','City Ops'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
+  const res = await api('getPartsRequests', { hub });
+  if (res.error) { el.innerHTML = '<p style="color:var(--danger);padding:20px">' + res.error + '</p>'; return; }
+
+  const all = res.requests || [];
+  const pending = all.filter(r => r.Status === 'Pending');
+  const decided = all.filter(r => r.Status !== 'Pending').slice(0, 20);
+
+  // ── GROUP pending requests by Ticket_ID ──
+  const byTicket = {};
+  pending.forEach(r => {
+    const tid = r.Ticket_ID || 'Unknown';
+    if (!byTicket[tid]) byTicket[tid] = [];
+    byTicket[tid].push(r);
+  });
 
   const pendingHtml = pending.length === 0
-    ? '<p style="text-align:center;color:var(--text2);padding:20px 0">No pending requests ✅</p>'
-    : pending.map(r => `
-      <div class="ticket-card" style="border-color:var(--warning)">
-        <div class="ticket-header">
-          <span class="ticket-id">${r.Request_ID}</span>
-          <span class="status-badge s-open">Pending</span>
-        </div>
-        <div class="ticket-title">${r.Part_Name}</div>
-        <div class="ticket-meta"><span class="tag tag-blue">${r.Part_ID}</span><span class="tag tag-grey">${r.Category||''}</span></div>
-        <div class="ticket-sub">Qty: ${r.Qty_Requested} · Tech: ${r.Tech_Name} · Hub: ${r.Hub}</div>
-        <div class="ticket-sub">Job Card: ${r.Ticket_ID} · ${fmtDate(r.Raised_At)}</div>
-        ${r.Remarks ? `<div style="font-size:12px;color:var(--warning);margin-top:4px">📝 ${r.Remarks}</div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn btn-success btn-sm" onclick="decidePartsReq('${r.Request_ID}','Approved','${r.Ticket_ID}')" style="flex:1">✅ Approve & Issue</button>
-          <button class="btn btn-danger btn-sm" onclick="decidePartsReqWithReason('${r.Request_ID}','${r.Ticket_ID}')" style="flex:1">❌ Reject</button>
-        </div>
-      </div>`
-    ).join('');
+    ? '<div style="text-align:center;padding:30px;color:var(--text2)">✅ No pending requests</div>'
+    : Object.entries(byTicket).map(([ticketId, parts]) => {
+        const first = parts[0];
+        const allReqIds = parts.map(p => p.Request_ID).join(',');
+        return `
+        <div class="ticket-card" style="border-color:var(--warning);margin-bottom:14px">
+          <div class="ticket-header">
+            <span class="ticket-id">${ticketId}</span>
+            <span class="status-badge s-open">${parts.length} part${parts.length>1?'s':''} pending</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            <span class="tag tag-teal">🔧 ${first.Tech_Name||'—'}</span>
+            <span class="tag tag-blue">${first.Hub||'—'}</span>
+            <span class="tag tag-grey">${fmtDate(first.Raised_At)}</span>
+          </div>
+          <div style="background:var(--surface3);border-radius:8px;padding:10px;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Parts Requested:</div>
+            ${parts.map(p => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+                <div>
+                  <div style="font-size:13px;font-weight:600">${p.Part_Name}</div>
+                  <div style="font-size:11px;color:var(--text3)">${p.Part_ID} · ${p.Category||''} · Qty: ${p.Qty_Requested}</div>
+                  ${p.Remarks ? '<div style="font-size:11px;color:var(--warning)">📝 ' + p.Remarks + '</div>' : ''}
+                </div>
+                <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px">
+                  <button class="btn btn-success btn-sm" onclick="decideOne('${p.Request_ID}','Approved','${ticketId}')" style="padding:5px 10px;font-size:11px">✅</button>
+                  <button class="btn btn-danger btn-sm" onclick="decideOne('${p.Request_ID}','Rejected','${ticketId}')" style="padding:5px 10px;font-size:11px">❌</button>
+                </div>
+              </div>`).join('')}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-success" onclick="approveAll('${allReqIds}','${ticketId}')" style="flex:1">✅ Approve All ${parts.length} Parts</button>
+            <button class="btn btn-danger btn-sm" onclick="rejectAll('${allReqIds}','${ticketId}')" style="flex:1">❌ Reject All</button>
+          </div>
+        </div>`;
+      }).join('');
 
-  const historyHtml = all.length > 0 ? `
+  const historyHtml = decided.length === 0 ? '' : `
     <div class="section-hdr" style="margin-top:16px">Recently Decided</div>
-    ${all.map(r => `
-      <div class="ticket-card" style="opacity:0.8">
-        <div class="ticket-header">
-          <span class="ticket-id" style="font-size:11px">${r.Request_ID}</span>
-          <span class="status-badge ${r.Status==='Approved'?'s-rfd':'s-closed'}">${r.Status}</span>
+    ${decided.map(r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+        <div>
+          <div style="font-size:12px;font-weight:600">${r.Part_Name} ×${r.Qty_Requested}</div>
+          <div style="font-size:11px;color:var(--text3)">${r.Ticket_ID} · ${r.Chassis_No||'—'} · ${r.Tech_Name||'—'} · ${fmtDate(r.Approved_At)}</div>
         </div>
-        <div class="ticket-title" style="font-size:13px">${r.Part_Name} ×${r.Qty_Requested}</div>
-        <div class="ticket-sub">${r.Tech_Name} · ${r.Ticket_ID} · ${fmtDate(r.Approved_At)}</div>
-      </div>`).join('')}` : '';
+        <span class="status-badge ${r.Status==='Approved'?'s-rfd':'s-closed'}">${r.Status}</span>
+      </div>`).join('')}`;
 
   el.innerHTML = `
-    <div class="section-hdr">Pending Approval (${pending.length})</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span class="section-hdr" style="margin:0">Pending (${Object.keys(byTicket).length} tickets · ${pending.length} parts)</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadPartsRequests()">🔄</button>
+    </div>
     ${pendingHtml}
     ${historyHtml}`;
 }
 
-async function decidePartsReq(reqId, decision, ticketId) {
+// Approve/reject a single part
+async function decideOne(reqId, decision, ticketId) {
+  const btn = event.target;
+  btn.disabled = true;
+  const reason = decision === 'Rejected' ? (prompt('Rejection reason:') || 'Rejected') : '';
+  if (decision === 'Rejected' && reason === null) { btn.disabled = false; return; }
   const res = await api('approvePartsRequest', {
-    reqId, decision,
-    managerMobile: currentUser.mobile, managerName: currentUser.name,
-    ticketId,
+    reqId, decision, remarks: reason,
+    managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
   });
-  if (res.error) { toast(res.error,'error'); return; }
-  toast(decision === 'Approved' ? '✅ Approved & issued from inventory' : '❌ Rejected','success');
+  btn.disabled = false;
+  if (res.error) { toast(res.error, 'error'); return; }
+  toast(decision === 'Approved' ? '✅ Approved' : '❌ Rejected', 'success');
   loadPartsRequests();
 }
 
-async function decidePartsReqWithReason(reqId, ticketId) {
-  const reason = prompt('Reason for rejection (e.g. Out of stock):');
-  if (reason === null) return;
-  const res = await api('approvePartsRequest', {
-    reqId, decision: 'Rejected', remarks: reason,
-    managerMobile: currentUser.mobile, managerName: currentUser.name,
-    ticketId,
-  });
-  if (res.error) { toast(res.error,'error'); return; }
-  toast('Rejected — technician notified','success');
+// Approve ALL parts for a ticket at once
+async function approveAll(reqIdsStr, ticketId) {
+  const reqIds = reqIdsStr.split(',');
+  const btn = event.target; btn.disabled = true;
+  btn.textContent = '⏳ Approving...';
+  let ok = 0;
+  for (const reqId of reqIds) {
+    const res = await api('approvePartsRequest', {
+      reqId, decision: 'Approved',
+      managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
+    });
+    if (!res.error) ok++;
+  }
+  btn.disabled = false;
+  toast('✅ Approved ' + ok + '/' + reqIds.length + ' parts — inventory updated', 'success');
   loadPartsRequests();
 }
+
+// Reject ALL parts for a ticket
+async function rejectAll(reqIdsStr, ticketId) {
+  const reason = prompt('Reason for rejecting all parts:');
+  if (!reason) return;
+  const reqIds = reqIdsStr.split(',');
+  for (const reqId of reqIds) {
+    await api('approvePartsRequest', {
+      reqId, decision: 'Rejected', remarks: reason,
+      managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
+    });
+  }
+  toast('❌ All parts rejected', 'success');
+  loadPartsRequests();
+}
+
+// Legacy alias
+async function decidePartsReq(reqId, decision, ticketId) { await decideOne(reqId, decision, ticketId); }
+async function decidePartsReqWithReason(reqId, ticketId) { await decideOne(reqId, 'Rejected', ticketId); }
 
 // ═══════════════════════════════════════════════════════════
 // DASHBOARD
