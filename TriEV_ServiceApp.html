@@ -702,30 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-async function pingServer() {
-  const el = document.getElementById('api-ping-text');
-  if (!el) return;
-  // Non-blocking — user can login while ping runs
-  el.textContent = '⏳ Checking server...';
-  el.style.color = 'var(--text3)';
-  const urlEl = document.getElementById('api-url-display');
-  if (urlEl) urlEl.textContent = API_URL.slice(0,60) + '...';
-  const start = Date.now();
-  try {
-    const res = await apiXHR('ping', {}, 10000);
-    const ms = Date.now() - start;
-    if (!el) return;
-    if (res && res.success) {
-      el.textContent = '✅ Server online (' + ms + 'ms)';
-      el.style.color = 'var(--success)';
-    } else {
-      el.textContent = '⚠️ ' + (res?.error || 'Server not responding — try logging in anyway');
-      el.style.color = 'var(--warning)';
-    }
-  } catch(e) {
-    if (el) { el.textContent = '⚠️ Cannot reach server'; el.style.color = 'var(--warning)'; }
-  }
-}
+// pingServer removed
 
 // ═══════════════════════════════════════════════════════════
 // API CALL
@@ -768,8 +745,7 @@ async function api(action, params={}, attempt=1) {
   }
 }
 
-// Keep apiXHR as alias for pingServer
-function apiXHR(action, params, timeoutMs) { return api(action, params); }
+
 
 // ═══════════════════════════════════════════════════════════
 // SCREEN NAV
