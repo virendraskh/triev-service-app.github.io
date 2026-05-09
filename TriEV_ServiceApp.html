@@ -2103,13 +2103,10 @@ let qcCustomItems = [];
 async function loadQCQueue() {
   document.getElementById('qc-queue-list').innerHTML =
     '<div class="loading"><div class="spinner"></div><span>Loading QC queue...</span></div>';
-  // Load both QC Pending AND QC Failed - Rework
-  const [pendRes, failRes] = await Promise.all([
-    api('getQCQueue', { hub: currentUser.hub }),
-    api('getDamageTickets', { hub: currentUser.hub, status: 'QC Failed - Rework' })
-  ]);
+  // QC queue = ONLY 'QC Pending' — 'QC Failed - Rework' goes back to technician
+  const pendRes = await api('getQCQueue', { hub: currentUser.hub });
   const pending = pendRes.tickets || [];
-  const rework  = failRes.tickets || [];
+  const rework  = []; // QC Failed tickets are NOT shown in QC queue
 
   const pendingHtml = pending.length === 0 ? '' : `
     <div class="section-hdr">QC Pending (${pending.length})</div>
@@ -2160,6 +2157,18 @@ async function openQCForm(ticketId) {
     api('getQCHistory',    { ticketId }),
     api('getRepairEvents', { ticketId }),
   ]);
+
+  // Safety: if ticket is 'QC Failed - Rework', show warning — it belongs to technician now
+  if (detailRes.ticket && detailRes.ticket.Status === 'QC Failed - Rework') {
+    document.getElementById('qc-form-content').innerHTML = `
+      <div style="padding:24px;text-align:center">
+        <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+        <div style="font-weight:700;font-size:16px;color:var(--warning);margin-bottom:8px">Ticket Returned to Technician</div>
+        <div style="color:var(--text2);font-size:13px;margin-bottom:16px">This ticket has failed QC and been sent back to the technician for rework. It will return to QC queue once the technician completes the repairs again.</div>
+        <button class="btn btn-ghost btn-sm" onclick="showScreen('qc-screen');loadQCQueue()">← Back to QC Queue</button>
+      </div>`;
+    return;
+  }
 
   if (detailRes.error) { toast(detailRes.error,'error'); showScreen('qc-screen'); return; }
   currentQCTicket = detailRes.ticket;
@@ -2311,15 +2320,15 @@ async function submitQC(ticketId, chassisNo, forceResult) {
     toast('Please add remarks explaining what failed','error'); return;
   }
 
-  const checklistJson = JSON.stringify(allItems.map((item,i) => ({
-    item, result: state[i]||'na'
-  })));
+  // Build checklist as string (never send as object)
+  const checklistArr = allItems.map((item,i) => ({ item, result: state[i]||'na' }));
+  const checklistJson = JSON.stringify(checklistArr);
 
   const res = await api('submitQC', {
     ticketId, chassisNo, hub: currentUser.hub,
     qcMobile: currentUser.mobile, qcName: currentUser.name,
-    checklistJson, overallStatus, remarks,
-    extraParts: JSON.stringify(qcExtraParts),
+    checklistJson,   // always a string
+    overallStatus, remarks,
   });
   if (res.error) { toast(res.error,'error'); return; }
 
