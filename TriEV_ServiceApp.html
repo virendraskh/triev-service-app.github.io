@@ -635,7 +635,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ═══════════════════════════════════════════════════════════
 // CONFIG — Replace with your deployed Apps Script URL
 // ═══════════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwolVn-Pnl6qxnsYXOnk_BZhYEXq2boIxkRrwMD-8xiItQmAXiTwBQrdAvTKSKzJBzHiQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyOcIKsi2KymCimxaNpUOlIikxSC75QaxGffL3r9Q87_7xMLAro_NP7W_YzuztzN5lcWg/exec';
 
 const HUBS = ['Indirapuram','Chhatarpur','Nangli','Gurgaon'];
 
@@ -743,7 +743,7 @@ function apiXHR(action, params, timeoutMs) {
     const timer = setTimeout(() => {
       xhr.abort();
       finish({ error: 'Timeout after ' + (timeoutMs/1000) + 's — server too slow' });
-    }, timeoutMs || 25000);
+    }, timeoutMs || 15000);
 
     xhr.open('GET', url, true);
     xhr.onload = () => {
@@ -760,7 +760,7 @@ function apiXHR(action, params, timeoutMs) {
 }
 
 async function api(action, params={}, attempt=1) {
-  const result = await apiXHR(action, params, 25000);
+  const result = await apiXHR(action, params, 15000);
   // Auto-retry once on timeout
   if (result.error && result.error.includes('Timeout') && attempt < 2) {
     await new Promise(r => setTimeout(r, 1000));
