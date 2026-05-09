@@ -2493,17 +2493,37 @@ async function loadPartsRequests() {
         </div>`;
       }).join('');
 
+  // Group decided by ticket too
+  const decidedByTicket = {};
+  decided.forEach(r => {
+    const tid = r.Ticket_ID || 'Unknown';
+    if (!decidedByTicket[tid]) decidedByTicket[tid] = [];
+    decidedByTicket[tid].push(r);
+  });
+
   const historyHtml = decided.length === 0 ? '' : `
     <div class="section-hdr" style="margin-top:16px">Recently Decided</div>
-    ${decided.map(r => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
-        <div>
-          <div style="font-size:12px;font-weight:600">${r.Part_Name} ×${r.Qty_Requested}</div>
-          <div style="font-size:11px;color:var(--text3)">${r.Ticket_ID} · ${r.Chassis_No||'—'} · ${r.Tech_Name||'—'}</div>
-          <div style="font-size:11px;color:var(--text3)">${fmtDate(r.Approved_At)}</div>
+    ${Object.entries(decidedByTicket).map(([tid, parts]) => {
+      const first = parts[0];
+      const allApproved = parts.every(p => p.Status === 'Approved');
+      const allRejected = parts.every(p => p.Status === 'Rejected');
+      const mixed = !allApproved && !allRejected;
+      const borderColor = allApproved ? 'var(--success)' : allRejected ? 'var(--danger)' : 'var(--warning)';
+      return `
+      <div style="background:var(--surface2);border-radius:var(--radius);border-left:4px solid ${borderColor};padding:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="ticket-id" style="font-size:12px">${tid}</span>
+          <span class="status-badge ${allApproved?'s-rfd':allRejected?'s-closed':'s-open'}">${allApproved?'All Approved':allRejected?'All Rejected':'Partial'}</span>
         </div>
-        <span class="status-badge ${r.Status==='Approved'?'s-rfd':'s-closed'}">${r.Status}</span>
-      </div>`).join('')}`;
+        <div style="font-size:12px;font-weight:600;margin-bottom:2px">${first.Chassis_No||'—'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px">🔧 ${first.Tech_Name||'—'} · 📍 ${first.Hub||'—'} · ${fmtDate(first.Approved_At)}</div>
+        ${parts.map(p => `
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border)">
+            <span style="font-size:12px">${p.Part_Name} ×${p.Qty_Requested}</span>
+            <span class="tag ${p.Status==='Approved'?'tag-green':'tag-red'}">${p.Status}</span>
+          </div>`).join('')}
+      </div>`;
+    }).join('')}`;
 
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -2550,43 +2570,88 @@ function togglePRTicket(id, header) {
   if (hint) hint.textContent = isOpen ? '▼ Tap to see parts & stock' : '▲ Tap to collapse';
 }
 
-async function decideOne(reqId, decision, ticketId) {
-  let reason = '';
-  if (decision === 'Rejected') {
-    reason = prompt('Rejection reason (e.g. Out of stock):') || '';
-    if (reason === null) return;
+// Global lock — prevents ANY double approval submission
+let _prLocked = false;
+
+function lockPR(msg) {
+  if (_prLocked) { toast('⏳ Please wait — processing...', 'error'); return false; }
+  _prLocked = true;
+  // Show overlay on parts screen
+  const el = document.getElementById('pr-content');
+  if (el) {
+    const overlay = document.createElement('div');
+    overlay.id = 'pr-lock-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px';
+    overlay.innerHTML = '<div class="spinner" style="width:48px;height:48px;border-width:4px"></div><div style="color:#fff;font-weight:700;font-size:16px">' + (msg||'Processing...') + '</div><div style="color:rgba(255,255,255,.6);font-size:12px">Please wait — do not tap again</div>';
+    document.body.appendChild(overlay);
   }
-  const res = await api('approvePartsRequest', {
-    reqId, decision, remarks: reason,
-    managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
-  });
-  if (res.error) { toast(res.error, 'error'); return; }
-  toast(decision === 'Approved' ? '✅ Approved' : '❌ Rejected', 'success');
-  loadPartsRequests();
+  return true;
+}
+
+function unlockPR() {
+  _prLocked = false;
+  const overlay = document.getElementById('pr-lock-overlay');
+  if (overlay) overlay.remove();
+}
+
+async function decideOne(reqId, decision, ticketId) {
+  if (!lockPR(decision === 'Approved' ? 'Approving part...' : 'Rejecting part...')) return;
+  try {
+    let reason = '';
+    if (decision === 'Rejected') {
+      unlockPR(); // Release lock while prompt is open
+      reason = prompt('Rejection reason (e.g. Out of stock):') || '';
+      if (!lockPR('Rejecting part...')) return;
+    }
+    const res = await api('approvePartsRequest', {
+      reqId, decision, remarks: reason,
+      managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
+    });
+    if (res.error) { toast(res.error, 'error'); return; }
+    toast(decision === 'Approved' ? '✅ Approved' : '❌ Rejected', 'success');
+    loadPartsRequests();
+  } finally {
+    unlockPR();
+  }
 }
 
 async function approveAll(reqIdsStr, ticketId) {
-  const reqIds = reqIdsStr.split(',');
-  const btn = event.target; btn.disabled = true; btn.textContent = '⏳ Approving...';
-  let ok = 0;
-  for (const reqId of reqIds) {
-    const res = await api('approvePartsRequest', { reqId, decision: 'Approved', managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId });
-    if (!res.error) ok++;
+  if (!lockPR('Approving all parts...')) return;
+  try {
+    const reqIds = reqIdsStr.split(',').filter(Boolean);
+    let ok = 0;
+    for (const reqId of reqIds) {
+      const res = await api('approvePartsRequest', {
+        reqId, decision: 'Approved',
+        managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
+      });
+      if (!res.error) ok++;
+    }
+    toast('✅ Approved ' + ok + '/' + reqIds.length + ' parts — inventory updated', 'success');
+    loadPartsRequests();
+  } finally {
+    unlockPR();
   }
-  btn.disabled = false;
-  toast('✅ Approved ' + ok + '/' + reqIds.length + ' parts — inventory updated', 'success');
-  loadPartsRequests();
 }
 
 async function rejectAll(reqIdsStr, ticketId) {
+  unlockPR(); // Release before prompt
   const reason = prompt('Reason for rejecting all parts:');
   if (!reason) return;
-  const reqIds = reqIdsStr.split(',');
-  for (const reqId of reqIds) {
-    await api('approvePartsRequest', { reqId, decision: 'Rejected', remarks: reason, managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId });
+  if (!lockPR('Rejecting all parts...')) return;
+  try {
+    const reqIds = reqIdsStr.split(',').filter(Boolean);
+    for (const reqId of reqIds) {
+      await api('approvePartsRequest', {
+        reqId, decision: 'Rejected', remarks: reason,
+        managerMobile: currentUser.mobile, managerName: currentUser.name, ticketId,
+      });
+    }
+    toast('❌ All parts rejected', 'success');
+    loadPartsRequests();
+  } finally {
+    unlockPR();
   }
-  toast('❌ All parts rejected', 'success');
-  loadPartsRequests();
 }
 
 async function decidePartsReq(reqId, decision, ticketId) { await decideOne(reqId, decision, ticketId); }
