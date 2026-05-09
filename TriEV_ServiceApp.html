@@ -1485,35 +1485,6 @@ async function loadRepairMonitor() {
   `;
 }
 
-// DEBUG: tap ticket ID 3 times fast to show raw API response
-let _debugTaps = 0, _debugTimer = null;
-function debugTap(ticketId) {
-  _debugTaps++;
-  clearTimeout(_debugTimer);
-  _debugTimer = setTimeout(() => { _debugTaps = 0; }, 2000);
-  if (_debugTaps >= 3) {
-    _debugTaps = 0;
-    showRawDebug(ticketId);
-  } else {
-    openRepairWork(ticketId);
-  }
-}
-
-async function showRawDebug(ticketId) {
-  const el = document.getElementById('repair-work-content');
-  showScreen('repair-work');
-  el.innerHTML = '<div class="loading"><div class="spinner"></div><span>Debug test...</span></div>';
-  const start = Date.now();
-  const res = await api('getDamageDetail', { ticketId });
-  const ms = Date.now() - start;
-  el.innerHTML = '<div style="padding:16px;font-size:11px;word-break:break-all;background:var(--surface2);border-radius:8px;margin:8px">'
-    + '<b>ticketId:</b> ' + ticketId + '<br>'
-    + '<b>time:</b> ' + ms + 'ms<br>'
-    + '<b>response:</b><br><pre style="font-size:10px;overflow:auto;max-height:400px">'
-    + JSON.stringify(res, null, 2) + '</pre>'
-    + '<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="showScreen(\'repair-queue\')">← Back</button>'
-    + '</div>';
-}
 
 async function loadRepairQueue() {
   document.getElementById('repair-queue-content').innerHTML =
@@ -1563,7 +1534,7 @@ async function loadRepairQueue() {
           };
           const sc = statusColors[t.Status] || 'tag-grey';
           return `
-          <div class="ticket-card" onclick="debugTap('${t.Ticket_ID}')">
+          <div class="ticket-card" onclick="openRepairWork('${t.Ticket_ID}')">
             <div class="ticket-header">
               <span class="ticket-id">${t.Ticket_ID}</span>
               <span class="tag ${sc}" style="font-size:11px;padding:3px 10px">${t.Status}</span>
