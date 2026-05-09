@@ -635,7 +635,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ═══════════════════════════════════════════════════════════
 // CONFIG — Replace with your deployed Apps Script URL
 // ═══════════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwbdduEoQc-E3w-RWD0CqlWL1hInqZ-KpLXaiM6OUM4bqUmuGkmsyoO8saMwGW4EANbRA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxQmhqMVbu50iO_gKPk-i6VNEAl1artMbPDqdPyrKgqvrQgPZ9wT0RCKElxkewEEwpSKw/exec';
 
 const HUBS = ['Indirapuram','Chhatarpur','Nangli','Gurgaon'];
 
@@ -1583,8 +1583,15 @@ async function openRepairWork(ticketId) {
 
   const detailRes = await api('getDamageDetail', { ticketId });
   if (!detailRes || detailRes.error) { showErr('Ticket load failed: ' + (detailRes?.error||'No response')); return; }
-  const prRes = await api('getPartsRequests', { ticketId });
-  const evRes = await api('getRepairEvents',  { ticketId });
+
+  // These two are non-critical — don't block if they fail
+  let prRes = { requests: [] };
+  let evRes = { events: [] };
+  try { prRes = await api('getPartsRequests', { ticketId }); } catch(e) {}
+  try { evRes = await api('getRepairEvents',  { ticketId }); } catch(e) {}
+  if (prRes && prRes.error) prRes = { requests: [] };
+  if (evRes && evRes.error) evRes = { events: [] };
+
   clearInterval(loadTimer);
   // Safety: if events sheet doesn't exist yet, treat as empty
   currentRepairTicket = detailRes;
