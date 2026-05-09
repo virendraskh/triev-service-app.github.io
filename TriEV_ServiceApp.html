@@ -632,7 +632,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ═══════════════════════════════════════════════════════════
 // CONFIG — Replace with your deployed Apps Script URL
 // ═══════════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzkWkA2a5m3jXZrGBdrRXlH68kLCsJD5WIxYaIN3PCy6_Y-8lNxeV6GvQwrwYNvR1Ub2Q/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwmuxhNhREpPd3X0AK91PDxByzJFatlDP94UgeCixjiwOZbJKQnygALa0Es8E4XXfgnAA/exec';
 
 const HUBS = ['Indirapuram','Chhatarpur','Nangli','Gurgaon'];
 
@@ -670,6 +670,7 @@ let publicHub = '';
 let publicSelectedIssues = [];
 let currentRepairTicket = null;
 let currentQCTicket = null;
+let techniciansByHub = {};   // cache: hub → [{mobile, name, role}]
 
 // ═══════════════════════════════════════════════════════════
 // APP INIT
@@ -1149,10 +1150,16 @@ function renderDAList() {
         <div class="ticket-sub" onclick="viewDATicket('${t.Ticket_ID}')">Rider: ${t.Rider_ID} · Hub: ${t.Hub} · ₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</div>
         <div class="ticket-sub" style="margin-top:4px" onclick="viewDATicket('${t.Ticket_ID}')">${fmtDate(t.Submitted_At)}</div>
         ${showAssign ? `
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-          <input type="tel" id="tl-mob-${t.Ticket_ID}" placeholder="Tech mobile" style="flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px">
-          <input type="text" id="tl-name-${t.Ticket_ID}" placeholder="Tech name" style="flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px">
-          <button class="btn btn-primary btn-sm" onclick="quickAssign('${t.Ticket_ID}','${t.Chassis_No}')">Assign</button>
+        <div style="margin-top:10px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="tech-sel-${t.Ticket_ID}"
+              style="flex:1;background:var(--surface3);border:1.5px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-size:12px;outline:none"
+              onfocus="buildTechDropdown('${t.Ticket_ID}','${t.Hub}')">
+              <option value="">👆 Tap to load technicians</option>
+            </select>
+            <button id="assign-btn-${t.Ticket_ID}" class="btn btn-primary btn-sm"
+              onclick="quickAssign('${t.Ticket_ID}','${t.Chassis_No}','${t.Hub}')">Assign</button>
+          </div>
         </div>` : ''}
       </div>`;
     }).join('');
@@ -1160,19 +1167,48 @@ function renderDAList() {
 
 function filterDA() { renderDAList(); }
 
-async function quickAssign(ticketId, chassisNo) {
-  const techMobile = (document.getElementById('tl-mob-'+ticketId)||{}).value||'';
-  const techName   = (document.getElementById('tl-name-'+ticketId)||{}).value||'';
-  if (!techMobile || !techName) { toast('Enter tech mobile and name','error'); return; }
+// Load technicians for a hub — cached so only 1 API call per hub per session
+async function getTechsForHub(hub) {
+  if (techniciansByHub[hub]) return techniciansByHub[hub];
+  const res = await api('getTechnicians', { hub });
+  if (res.error || !res.technicians) return [];
+  techniciansByHub[hub] = res.technicians;
+  return res.technicians;
+}
+
+// Build technician dropdown for a ticket's hub
+async function buildTechDropdown(ticketId, hub) {
+  const sel = document.getElementById('tech-sel-' + ticketId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">⏳ Loading...</option>';
+  const techs = await getTechsForHub(hub);
+  if (techs.length === 0) {
+    sel.innerHTML = '<option value="">No technicians found for ' + hub + '</option>';
+    return;
+  }
+  // Filter to repair-capable roles only
+  const repairRoles = ['Core Technician','Lead Technician','Running Repair Technician'];
+  const filtered = techs.filter(t => repairRoles.some(r => (t.role||'').includes(r) || t.role === r));
+  sel.innerHTML = '<option value="">— Select Technician —</option>' +
+    filtered.map(t => `<option value="${t.mobile}|${t.name}|${t.role}">${t.name} · ${t.role.replace(' Technician','')}</option>`).join('');
+}
+
+async function quickAssign(ticketId, chassisNo, ticketHub) {
+  const sel = document.getElementById('tech-sel-' + ticketId);
+  if (!sel || !sel.value) { toast('Select a technician first','error'); return; }
+  const [techMobile, techName, techRole] = sel.value.split('|');
+  const btn = document.getElementById('assign-btn-' + ticketId);
+  if (btn) btn.textContent = '⏳';
   const res = await api('assignRepair', {
     ticketId, chassisNo,
-    hub: currentUser.hub,
+    hub: ticketHub || currentUser.hub,
     leadMobile: currentUser.mobile,
     leadName: currentUser.name,
     techMobile, techName,
   });
+  if (btn) btn.textContent = 'Assign';
   if (res.error) { toast(res.error,'error'); return; }
-  toast('Assigned to '+techName+' ✅','success');
+  toast('✅ Assigned to ' + techName,'success');
   loadDAList();
 }
 function filterDAStatus(status, el) {
@@ -1200,14 +1236,14 @@ async function viewDATicket(ticketId) {
     <div class="detail-section">
       <h3>Assign to Technician</h3>
       <div class="field-group">
-        <label>Technician Mobile</label>
-        <input type="tel" id="assign-tech-mobile" placeholder="Technician mobile number">
+        <label>Select Technician <span style="color:var(--text3);font-size:11px">(${t.Hub} hub only)</span></label>
+        <select id="assign-tech-sel"
+          style="width:100%;background:var(--surface3);border:1.5px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px"
+          onfocus="loadDetailTechs('${t.Hub}')">
+          <option value="">👆 Tap to load technicians</option>
+        </select>
       </div>
-      <div class="field-group">
-        <label>Technician Name</label>
-        <input type="text" id="assign-tech-name" placeholder="Technician name">
-      </div>
-      <button class="btn btn-primary" onclick="assignTicket('${ticketId}','${t.Chassis_No}')">🔧 Assign Repair</button>
+      <button class="btn btn-primary" onclick="assignTicketFromDetail('${ticketId}','${t.Chassis_No}','${t.Hub}')">🔧 Assign Repair</button>
     </div>` : '';
 
   document.getElementById('da-list-content').innerHTML = `
@@ -1246,18 +1282,35 @@ async function viewDATicket(ticketId) {
   `;
 }
 
-async function assignTicket(ticketId, chassisNo) {
-  const techMobile = document.getElementById('assign-tech-mobile').value.trim();
-  const techName   = document.getElementById('assign-tech-name').value.trim();
-  if (!techMobile || !techName) { toast('Enter technician details','error'); return; }
+async function loadDetailTechs(hub) {
+  const sel = document.getElementById('assign-tech-sel');
+  if (!sel || sel.dataset.loaded === hub) return;
+  sel.innerHTML = '<option value="">⏳ Loading...</option>';
+  const techs = await getTechsForHub(hub);
+  const repairRoles = ['Core Technician','Lead Technician','Running Repair Technician'];
+  const filtered = techs.filter(t => repairRoles.some(r => (t.role||'').includes(r)));
+  sel.innerHTML = '<option value="">— Select Technician —</option>' +
+    filtered.map(t => `<option value="${t.mobile}|${t.name}">${t.name} · ${t.role.replace(' Technician','')}</option>`).join('');
+  sel.dataset.loaded = hub;
+}
+
+async function assignTicketFromDetail(ticketId, chassisNo, hub) {
+  const sel = document.getElementById('assign-tech-sel');
+  if (!sel || !sel.value) { toast('Select a technician','error'); return; }
+  const [techMobile, techName] = sel.value.split('|');
   const res = await api('assignRepair', {
-    ticketId, chassisNo, hub: currentUser.hub,
+    ticketId, chassisNo, hub,
     leadMobile: currentUser.mobile, leadName: currentUser.name,
     techMobile, techName,
   });
   if (res.error) { toast(res.error,'error'); return; }
-  toast('Assigned successfully ✅','success');
+  toast('✅ Assigned to ' + techName,'success');
   loadDAList();
+}
+
+async function assignTicket(ticketId, chassisNo) {
+  // Legacy fallback — not used but kept for safety
+  toast('Use the dropdown to select technician','error');
 }
 
 // ═══════════════════════════════════════════════════════════
