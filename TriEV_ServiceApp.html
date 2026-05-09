@@ -1697,6 +1697,18 @@ async function openRepairWork(ticketId) {
   };
   const mappedStatus = statusMap[t.Status] || t.Status;
   const curIdx = statusSteps.indexOf(mappedStatus);
+
+  // QC failure banner — show to technician what failed
+  const qcFailBanner = (t.Status === 'QC Failed - Rework' && isTech) ? (() => {
+    const qcFailEv = events.filter(e => e.Event_Type === 'QC_FAILED' || e.Event_Type === 'QC_FAIL_DETAILS');
+    const lastFail = qcFailEv[qcFailEv.length - 1];
+    return lastFail ? `
+      <div style="background:rgba(239,68,68,.15);border:1.5px solid var(--danger);border-radius:var(--radius);padding:14px;margin-bottom:12px">
+        <div style="font-weight:700;color:var(--danger);margin-bottom:6px">🔴 QC Failed — Action Required</div>
+        <div style="font-size:13px;color:var(--text2)">${lastFail.Remarks||'Please check QC remarks'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px">${fmtDate(lastFail.Timestamp)}</div>
+      </div>` : '';
+  })() : '';
   const timelineHtml = `
     <div style="display:flex;align-items:center;gap:0;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
       ${statusSteps.map((s,i) => `
@@ -1821,6 +1833,7 @@ async function openRepairWork(ticketId) {
       <div class="detail-row"><span>Assigned To</span><span>${t.Assigned_Tech_Name || getTechNameFromMobile(t.Assigned_To) || t.Assigned_To || '—'}</span></div>
     </div>
     ${timelineHtml}
+    ${qcFailBanner||''}
     ${bottleneckHtml}
     <div class="detail-section">
       <h3>Damaged Parts (${parts.length})</h3>
@@ -1905,79 +1918,238 @@ async function completeRepair(ticketId, chassisNo) { await doCompleteRepair(tick
 // ═══════════════════════════════════════════════════════════
 // QC
 // ═══════════════════════════════════════════════════════════
+// QC extra parts added during inspection
+let qcExtraParts = [];
+let qcCustomItems = [];
+
 async function loadQCQueue() {
-  const res = await api('getQCQueue', { hub: currentUser.hub });
-  const tickets = res.tickets || [];
-  document.getElementById('qc-queue-list').innerHTML = tickets.length === 0
-    ? '<p style="text-align:center;color:var(--text2);padding:40px">No vehicles in QC queue</p>'
-    : tickets.map(t => `
+  document.getElementById('qc-queue-list').innerHTML =
+    '<div class="loading"><div class="spinner"></div><span>Loading QC queue...</span></div>';
+  // Load both QC Pending AND QC Failed - Rework
+  const [pendRes, failRes] = await Promise.all([
+    api('getQCQueue', { hub: currentUser.hub }),
+    api('getDamageTickets', { hub: currentUser.hub, status: 'QC Failed - Rework' })
+  ]);
+  const pending = pendRes.tickets || [];
+  const rework  = failRes.tickets || [];
+
+  const pendingHtml = pending.length === 0 ? '' : `
+    <div class="section-hdr">QC Pending (${pending.length})</div>
+    ${pending.map(t => `
       <div class="ticket-card" onclick="openQCForm('${t.Ticket_ID}')">
-        <div class="ticket-header"><span class="ticket-id">${t.Ticket_ID}</span><span class="status-badge s-qc">QC Pending</span></div>
-        <div class="ticket-meta"><span class="tag tag-blue">${t.OEM}</span><span class="tag tag-purple">${t.Damage_Category||'—'}</span></div>
+        <div class="ticket-header">
+          <span class="ticket-id">${t.Ticket_ID}</span>
+          <span class="status-badge s-qc">QC Pending</span>
+        </div>
+        <div class="ticket-meta">
+          <span class="tag tag-blue">${t.OEM}</span>
+          <span class="tag tag-purple">${t.Damage_Category||'—'}</span>
+        </div>
         <div class="ticket-title">${t.Chassis_No}</div>
         <div class="ticket-sub">${t.Case_Type} · ${t.Hub}</div>
-      </div>`
-    ).join('');
+        <div class="ticket-sub" style="margin-top:2px">Assigned To: ${t.Assigned_Tech_Name||t.Assigned_To||'—'}</div>
+      </div>`).join('')}`;
+
+  const reworkHtml = rework.length === 0 ? '' : `
+    <div class="section-hdr" style="color:var(--danger);margin-top:16px">QC Failed — Back to Repair (${rework.length})</div>
+    ${rework.map(t => `
+      <div class="ticket-card" style="border-color:var(--danger)" onclick="openQCForm('${t.Ticket_ID}')">
+        <div class="ticket-header">
+          <span class="ticket-id">${t.Ticket_ID}</span>
+          <span class="status-badge s-closed">Rework</span>
+        </div>
+        <div class="ticket-meta">
+          <span class="tag tag-blue">${t.OEM}</span>
+          <span class="tag tag-red">Failed QC</span>
+        </div>
+        <div class="ticket-title">${t.Chassis_No}</div>
+        <div class="ticket-sub">Tech: ${t.Assigned_Tech_Name||t.Assigned_To||'—'} · ${t.Hub}</div>
+      </div>`).join('')}`;
+
+  document.getElementById('qc-queue-list').innerHTML =
+    pending.length === 0 && rework.length === 0
+      ? '<p style="text-align:center;color:var(--text2);padding:40px">No vehicles in QC queue ✅</p>'
+      : pendingHtml + reworkHtml;
 }
 
 async function openQCForm(ticketId) {
-  const res = await api('getDamageDetail', { ticketId });
-  if (res.error) { toast(res.error,'error'); return; }
-  currentQCTicket = res.ticket;
+  document.getElementById('qc-form-content').innerHTML =
+    '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
   showScreen('qc-form');
 
-  const t = res.ticket;
+  const [detailRes, qcHistRes, evRes] = await Promise.all([
+    api('getDamageDetail', { ticketId }),
+    api('getQCHistory',    { ticketId }),
+    api('getRepairEvents', { ticketId }),
+  ]);
+
+  if (detailRes.error) { toast(detailRes.error,'error'); showScreen('qc-screen'); return; }
+  currentQCTicket = detailRes.ticket;
+  const t = detailRes.ticket;
+  const damagedParts = detailRes.parts || [];
+  const qcHistory = (qcHistRes.history || []);
+  const events = (evRes.events || []);
+  qcExtraParts = [];
+  qcCustomItems = [];
+  window.qcState = QC_CHECKLIST.map(() => '');
+
+  // Calculate total time so far
+  const assignedEv = events.find(e => e.Event_Type === 'REPAIR_ASSIGNED');
+  const startedEv  = events.find(e => e.Event_Type === 'REPAIR_STARTED');
+  const totalMins  = assignedEv ? Math.round((Date.now() - new Date(assignedEv.Timestamp)) / 60000) : null;
+
+  // QC history summary
+  const failCount = qcHistory.filter(q => q.Overall_Status === 'Fail').length;
+  const historyHtml = qcHistory.length === 0 ? '' : `
+    <div class="detail-section" style="border-color:${failCount>0?'var(--danger)':'var(--success)'}">
+      <h3>QC History (${qcHistory.length} attempt${qcHistory.length>1?'s':''})</h3>
+      ${qcHistory.map((q,i) => {
+        let failedItems = [];
+        try { const cl = JSON.parse(q.Checklist_JSON||'[]'); failedItems = cl.filter(c=>c.result==='fail').map(c=>c.item); } catch(e){}
+        return `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:600">Attempt ${i+1} — ${fmtDate(q.QC_Date)}</span>
+            <span class="tag ${q.Overall_Status==='Pass'?'tag-green':'tag-red'}">${q.Overall_Status}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">By: ${q.QC_Name||'—'}</div>
+          ${failedItems.length>0?'<div style="font-size:11px;color:var(--danger);margin-top:4px">❌ Failed: '+failedItems.join(', ')+'</div>':''}
+          ${q.Remarks?'<div style="font-size:11px;color:var(--text2);margin-top:2px">📝 '+q.Remarks+'</div>':''}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  const timeHtml = totalMins ? `
+    <div style="background:rgba(79,142,247,.1);border:1px solid var(--primary);border-radius:8px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-between">
+      <span style="font-size:13px;color:var(--text2)">⏱ Total time since assignment</span>
+      <span style="font-weight:700;color:var(--primary)">${totalMins >= 60 ? Math.floor(totalMins/60)+'h '+(totalMins%60)+'m' : totalMins+'m'}</span>
+    </div>` : '';
+
   document.getElementById('qc-form-content').innerHTML = `
     <div class="detail-section">
       <h3>${t.Ticket_ID} — ${t.Chassis_No}</h3>
       <div class="detail-row"><span>OEM</span><span>${t.OEM}</span></div>
       <div class="detail-row"><span>Case Type</span><span>${t.Case_Type}</span></div>
+      <div class="detail-row"><span>Technician</span><span>${t.Assigned_Tech_Name||t.Assigned_To||'—'}</span></div>
+      <div class="detail-row"><span>Category</span><span style="color:var(--orange)">${t.Damage_Category||'—'}</span></div>
+      ${failCount>0?'<div class="detail-row"><span>QC Failures</span><span style="color:var(--danger);font-weight:700">'+failCount+' time(s)</span></div>':''}
     </div>
+    ${timeHtml}
+    ${historyHtml}
+
+    <div class="section-hdr">Damaged Parts (for reference)</div>
+    <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:16px">
+      ${damagedParts.length===0
+        ? '<p style="color:var(--text3);font-size:12px">No parts logged</p>'
+        : damagedParts.map(p=>`<div style="font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">${p.Part_Name} ×${p.Qty||1}</div>`).join('')}
+    </div>
+
     <div class="section-hdr">QC Checklist</div>
-    ${QC_CHECKLIST.map((item, i) => `
-      <div class="checklist-item">
-        <label>${i+1}. ${item}</label>
-        <div class="radio-group">
-          <div class="radio-opt" id="qc-pass-${i}" onclick="setQC(${i},'pass')">✅ Pass</div>
-          <div class="radio-opt" id="qc-fail-${i}" onclick="setQC(${i},'fail')">❌ Fail</div>
-          <div class="radio-opt" id="qc-na-${i}" onclick="setQC(${i},'na')">— N/A</div>
-        </div>
-      </div>`
-    ).join('')}
-    <div class="field-group" style="margin-top:16px">
-      <label>Overall Remarks</label>
-      <textarea id="qc-remarks" placeholder="QC observations and notes..."></textarea>
+    <div id="qc-items-list">
+      ${QC_CHECKLIST.map((item, i) => buildQCItem(item, i)).join('')}
     </div>
-    <button class="btn btn-success" onclick="submitQC('${ticketId}','${t.Chassis_No}')">✅ Submit QC</button>
+
+    <div class="section-hdr">Add Additional Check Items</div>
+    <div id="qc-extra-items"></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input type="text" id="qc-custom-input" placeholder="e.g. Chain tension, Battery voltage..."
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px">
+      <button class="btn btn-primary btn-sm" onclick="addCustomQCItem()">+ Add</button>
+    </div>
+
+    <div class="field-group">
+      <label>QC Remarks / What went wrong</label>
+      <textarea id="qc-remarks" placeholder="Describe what failed, what needs rework, specific observations..." style="min-height:100px"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-success" onclick="submitQC('${ticketId}','${t.Chassis_No}','Pass')" style="flex:1">
+        ✅ QC Pass → Send to IOT
+      </button>
+      <button class="btn btn-danger" onclick="submitQC('${ticketId}','${t.Chassis_No}','Fail')" style="flex:1">
+        ❌ QC Fail → Back to Tech
+      </button>
+    </div>
   `;
-  // Initialize checklist state
-  window.qcState = QC_CHECKLIST.map(() => '');
+}
+
+function buildQCItem(item, i) {
+  return `<div class="checklist-item" id="qc-item-wrap-${i}">
+    <label>${i+1}. ${item}</label>
+    <div class="radio-group">
+      <div class="radio-opt" id="qc-pass-${i}" onclick="setQC(${i},'pass')">✅ Pass</div>
+      <div class="radio-opt" id="qc-fail-${i}" onclick="setQC(${i},'fail')">❌ Fail</div>
+      <div class="radio-opt" id="qc-na-${i}"   onclick="setQC(${i},'na')">— N/A</div>
+    </div>
+  </div>`;
+}
+
+function addCustomQCItem() {
+  const input = document.getElementById('qc-custom-input');
+  const val = (input?.value||'').trim();
+  if (!val) { toast('Enter an item name','error'); return; }
+  const idx = QC_CHECKLIST.length + qcCustomItems.length;
+  qcCustomItems.push(val);
+  window.qcState.push('');
+  const el = document.getElementById('qc-extra-items');
+  if (el) {
+    const div = document.createElement('div');
+    div.innerHTML = buildQCItem(val, idx);
+    el.appendChild(div.firstElementChild);
+  }
+  if (input) input.value = '';
+  toast('Item added ✅','success');
 }
 
 function setQC(idx, val) {
-  window.qcState = window.qcState || QC_CHECKLIST.map(()=>'');
+  if (!window.qcState) window.qcState = [];
   window.qcState[idx] = val;
   ['pass','fail','na'].forEach(v => {
-    const el = document.getElementById(`qc-${v}-${idx}`);
-    if (el) { el.className = 'radio-opt'; if(v===val) el.classList.add(`sel-${v==='na'?'na':v}`); }
+    const el = document.getElementById('qc-'+v+'-'+idx);
+    if (el) {
+      el.className = 'radio-opt';
+      if (v===val) el.classList.add(v==='pass'?'sel-pass':v==='fail'?'sel-fail':'sel-na');
+    }
   });
 }
 
-async function submitQC(ticketId, chassisNo) {
+async function submitQC(ticketId, chassisNo, forceResult) {
   const state = window.qcState || [];
-  const unfilled = state.findIndex(s => s === '');
-  if (unfilled >= 0) { toast(`Please fill item ${unfilled+1}`,'error'); return; }
-  const hasFail = state.includes('fail');
-  const overallStatus = hasFail ? 'Fail' : 'Pass';
-  const checklistJson = JSON.stringify(QC_CHECKLIST.map((item,i) => ({ item, result: state[i] })));
+  const allItems = [...QC_CHECKLIST, ...qcCustomItems];
+
+  // Check all standard items are filled
+  const unfilled = allItems.findIndex((_, i) => !state[i]);
+  if (unfilled >= 0) { toast('Please fill item '+(unfilled+1)+': '+allItems[unfilled],'error'); return; }
+
+  const hasFail = state.slice(0, allItems.length).includes('fail');
+  // Use explicit button result — if Pass button pressed but has fails, warn
+  let overallStatus = forceResult;
+  if (forceResult === 'Pass' && hasFail) {
+    if (!confirm('Some items are marked Fail. Are you sure you want to mark QC as Pass?')) return;
+  }
+
   const remarks = document.getElementById('qc-remarks')?.value || '';
+  if (overallStatus === 'Fail' && !remarks.trim()) {
+    toast('Please add remarks explaining what failed','error'); return;
+  }
+
+  const checklistJson = JSON.stringify(allItems.map((item,i) => ({
+    item, result: state[i]||'na'
+  })));
+
   const res = await api('submitQC', {
     ticketId, chassisNo, hub: currentUser.hub,
     qcMobile: currentUser.mobile, qcName: currentUser.name,
     checklistJson, overallStatus, remarks,
+    extraParts: JSON.stringify(qcExtraParts),
   });
   if (res.error) { toast(res.error,'error'); return; }
-  toast('QC ' + overallStatus + '! ✅','success');
+
+  if (overallStatus === 'Pass') {
+    toast('✅ QC Passed! Sent to IOT Manager.','success');
+  } else {
+    toast('❌ QC Failed. Ticket returned to technician for rework.','success');
+  }
   showScreen('qc-screen'); loadQCQueue();
 }
 
