@@ -399,11 +399,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="content">
     <input type="search" class="search-box" id="da-search" placeholder="Search ticket ID or chassis..." oninput="filterDA()">
-    <div class="tabs" id="da-status-tabs">
-      <div class="tab active" onclick="filterDAStatus('',this)">All</div>
-      <div class="tab" onclick="filterDAStatus('Open',this)">Open</div>
-      <div class="tab" onclick="filterDAStatus('Assigned',this)">Assigned</div>
-      <div class="tab" onclick="filterDAStatus('RFD',this)">RFD</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="cat-tab active" onclick="filterDAStatus('',this)">All</div>
+      <div class="cat-tab" onclick="filterDAStatus('Open',this)">Open</div>
+      <div class="cat-tab" onclick="filterDAStatus('Assigned',this)">Assigned</div>
+      <div class="cat-tab" onclick="filterDAStatus('In Repair',this)">In Repair</div>
+      <div class="cat-tab" onclick="filterDAStatus('QC Pending',this)">QC</div>
+      <div class="cat-tab" onclick="filterDAStatus('RFD',this)">RFD</div>
+      <div class="cat-tab" onclick="filterDAStatus('Insurance Pending',this)">Insurance</div>
     </div>
     <div id="da-list-content"><div class="loading"><div class="spinner"></div><span>Loading tickets...</span></div></div>
   </div>
@@ -629,7 +632,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ═══════════════════════════════════════════════════════════
 // CONFIG — Replace with your deployed Apps Script URL
 // ═══════════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzbUPPQn6xbOsYhVj1OsXRFrrndTEeMKIncFVaU38pLRXllA9iU9WxmgLTLkhBUDuliDQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzkWkA2a5m3jXZrGBdrRXlH68kLCsJD5WIxYaIN3PCy6_Y-8lNxeV6GvQwrwYNvR1Ub2Q/exec';
 
 const HUBS = ['Indirapuram','Chhatarpur','Nangli','Gurgaon'];
 
@@ -1102,7 +1105,18 @@ async function submitDA() {
 // DA TICKET LIST
 // ═══════════════════════════════════════════════════════════
 async function loadDAList() {
-  const hub = ['Super Admin','Admin','Service Head','City Ops','General Manager','IOT Manager'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
+  const ALL_HUB_ROLES = ['Super Admin','Admin','Service Head','City Ops','General Manager','IOT Manager','Insurance Manager','Recovery Manager','Data Analyst'];
+  const ASSIGNED_HUB_ROLES = ['Cluster Manager','Team Lead'];
+  const r = currentUser.role;
+  let hub;
+  if (ALL_HUB_ROLES.includes(r)) {
+    hub = 'ALL';
+  } else if (ASSIGNED_HUB_ROLES.includes(r)) {
+    // Send comma-separated assigned hubs — backend filters on each
+    hub = (currentUser.assignedHubs || [currentUser.hub]).join(',');
+  } else {
+    hub = currentUser.hub;
+  }
   const res = await api('getDamageTickets', { hub });
   allDaTickets = res.tickets || [];
   renderDAList();
@@ -1116,30 +1130,58 @@ function renderDAList() {
 
   document.getElementById('da-list-content').innerHTML = tickets.length === 0
     ? '<p style="text-align:center;color:var(--text2);padding:40px">No tickets found</p>'
-    : tickets.map(t => `
-      <div class="ticket-card" onclick="viewDATicket('${t.Ticket_ID}')">
-        <div class="ticket-header">
+    : tickets.map(t => {
+      const CAN_ASSIGN = ['Lead Technician','Hub Manager','Service Head','Admin','Super Admin','General Manager','City Ops'];
+      const showAssign = CAN_ASSIGN.includes(currentUser.role) && t.Status === 'Open';
+      return `
+      <div class="ticket-card">
+        <div class="ticket-header" onclick="viewDATicket('${t.Ticket_ID}')">
           <span class="ticket-id">${t.Ticket_ID}</span>
           <span class="status-badge ${statusClass(t.Status)}">${t.Status}</span>
         </div>
-        <div class="ticket-meta">
+        <div class="ticket-meta" onclick="viewDATicket('${t.Ticket_ID}')">
           <span class="tag tag-blue">${t.OEM}</span>
           <span class="tag tag-orange">${t.Case_Type}</span>
           <span class="tag tag-purple">${t.Damage_Category||'—'}</span>
           ${t.Insurance_Required==='Yes'?'<span class="tag tag-teal">🛡 Insurance</span>':''}
         </div>
-        <div class="ticket-title">${t.Chassis_No}</div>
-        <div class="ticket-sub">Rider: ${t.Rider_ID} · Hub: ${t.Hub} · ₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</div>
-        <div class="ticket-sub" style="margin-top:4px">${fmtDate(t.Submitted_At)}</div>
-      </div>`
-    ).join('');
+        <div class="ticket-title" onclick="viewDATicket('${t.Ticket_ID}')">${t.Chassis_No}</div>
+        <div class="ticket-sub" onclick="viewDATicket('${t.Ticket_ID}')">Rider: ${t.Rider_ID} · Hub: ${t.Hub} · ₹${Number(t.Damage_Amount||0).toLocaleString('en-IN')}</div>
+        <div class="ticket-sub" style="margin-top:4px" onclick="viewDATicket('${t.Ticket_ID}')">${fmtDate(t.Submitted_At)}</div>
+        ${showAssign ? `
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <input type="tel" id="tl-mob-${t.Ticket_ID}" placeholder="Tech mobile" style="flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px">
+          <input type="text" id="tl-name-${t.Ticket_ID}" placeholder="Tech name" style="flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px">
+          <button class="btn btn-primary btn-sm" onclick="quickAssign('${t.Ticket_ID}','${t.Chassis_No}')">Assign</button>
+        </div>` : ''}
+      </div>`;
+    }).join('');
 }
 
 function filterDA() { renderDAList(); }
+
+async function quickAssign(ticketId, chassisNo) {
+  const techMobile = (document.getElementById('tl-mob-'+ticketId)||{}).value||'';
+  const techName   = (document.getElementById('tl-name-'+ticketId)||{}).value||'';
+  if (!techMobile || !techName) { toast('Enter tech mobile and name','error'); return; }
+  const res = await api('assignRepair', {
+    ticketId, chassisNo,
+    hub: currentUser.hub,
+    leadMobile: currentUser.mobile,
+    leadName: currentUser.name,
+    techMobile, techName,
+  });
+  if (res.error) { toast(res.error,'error'); return; }
+  toast('Assigned to '+techName+' ✅','success');
+  loadDAList();
+}
 function filterDAStatus(status, el) {
   daStatusFilter = status;
-  document.querySelectorAll('#da-status-tabs .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  // Works with both .tab and .cat-tab
+  if (el && el.parentElement) {
+    el.parentElement.querySelectorAll('.tab,.cat-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
   renderDAList();
 }
 
@@ -1151,8 +1193,10 @@ async function viewDATicket(ticketId) {
   const t = res.ticket, parts = res.parts || [];
 
   // For lead tech — show assign option
-  const isLead = currentUser.role === 'Lead Technician';
-  const assignSection = isLead ? `
+  const r = currentUser.role;
+  const CAN_ASSIGN = ['Lead Technician','Hub Manager','Service Head','Admin','Super Admin','General Manager','City Ops'];
+  const canAssign = CAN_ASSIGN.includes(r);
+  const assignSection = canAssign ? `
     <div class="detail-section">
       <h3>Assign to Technician</h3>
       <div class="field-group">
