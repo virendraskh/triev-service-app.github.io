@@ -1726,6 +1726,14 @@ async function openRepairWork(ticketId) {
     return '';
   })() : '';
 
+  // Waiting state for parts requests
+  const waitingHtml = (isTech && t.Status === 'Parts Requested' && !hasRejected) ? `
+    <div class="detail-section" style="border-color:var(--warning)">
+      <h3 style="color:var(--warning)">⏳ Waiting for Parts Approval</h3>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0">Parts request submitted. Inventory Manager will approve shortly.</p>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openRepairWork('${ticketId}')">🔄 Refresh</button>
+    </div>` : '';
+
   document.getElementById('repair-work-content').innerHTML = `
     <div class="detail-section">
       <h3>Job Card — ${t.Ticket_ID}</h3>
@@ -1744,8 +1752,7 @@ async function openRepairWork(ticketId) {
     </div>
     ${prHtml}
     ${tsHtml}
-    ${waitingHtml||''}
-    ${waitingHtml2||''}
+    ${waitingHtml}
     ${raiseReqHtml}
     ${startHtml}
     ${completeHtml}
