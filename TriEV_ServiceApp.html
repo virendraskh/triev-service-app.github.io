@@ -899,7 +899,7 @@ function daStep2() {
   daSelectedParts = [];
   document.getElementById('da-step1').style.display = 'none';
   document.getElementById('da-step2').style.display = 'block';
-  buildPartsSelector(daVehicle.OEM || 'Ampere', 'da-parts-selector', 'da');
+  buildPartsSelector(normaliseOEM(daVehicle.OEM || 'Ampere'), 'da-parts-selector', 'da');
 }
 
 function daBack() {
@@ -907,13 +907,31 @@ function daBack() {
   document.getElementById('da-step2').style.display = 'none';
 }
 
+// Normalise OEM name to match catalog keys
+// Vehicle_Master has 'MotoVolt', catalog has 'Motovolt', etc.
+function normaliseOEM(oem) {
+  if (!oem) return 'Ampere';
+  const map = {
+    'motovolt': 'Motovolt',
+    'ampere':   'Ampere',
+    'shema':    'Shema',
+    'bgauss':   'Ampere',   // Bgauss → use Ampere catalog until Bgauss parts added
+    'warivo':   'Ampere',   // Warivo → use Ampere catalog until Warivo parts added
+  };
+  return map[oem.toLowerCase()] || oem;
+}
+
 function buildPartsSelector(oem, containerId, prefix) {
+  const rawOEM = oem;
+  oem = normaliseOEM(oem);
   const catalog = PARTS_CATALOG[oem] || PARTS_CATALOG['Ampere'];
+  const noCatalog = !PARTS_CATALOG[oem];
   const categories = Object.keys(catalog);
   const el = document.getElementById(containerId);
   if (!el) return;
 
   el.innerHTML = `
+    ${noCatalog ? `<div style="background:rgba(245,158,11,.15);border:1px solid var(--warning);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--warning);margin-bottom:8px">⚠ No catalog for ${rawOEM} yet — showing Ampere parts as reference. Add ${rawOEM} parts to Parts_Catalog sheet.</div>` : ''}
     <div class="cat-tabs" id="${prefix}-cat-tabs">
       ${categories.map((cat,i) => `<div class="cat-tab ${i===0?'active':''}" onclick="switchCat('${oem}','${cat}','${prefix}',this)">${cat.replace(' Spare Parts','').replace('Electrical','Elec').replace('Consumables','Consumable')}</div>`).join('')}
     </div>
@@ -949,7 +967,7 @@ function showCategoryParts(oem, cat, prefix) {
   }).join('');
 }
 
-function escH(s) { return (s||'').replace(/'/g,"\'").replace(/"/g,'&quot;'); }
+function escH(s) { return (s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 function togglePart(id, code, name, cat, oem, prefix) {
   const idx = daSelectedParts.findIndex(s => s.partId === id);
@@ -1260,7 +1278,7 @@ async function openRepairWork(ticketId) {
     <div class="section-hdr">Start Repair Timer</div>
     <button class="btn btn-primary btn-sm" onclick="startRepairTimer('${ticketId}','${t.Chassis_No}')">▶ Start Repair</button>
   `;
-  buildPartsSelector(oem, 'repair-parts-selector', 'repair');
+  buildPartsSelector(normaliseOEM(oem), 'repair-parts-selector', 'repair');
 }
 
 async function startRepairTimer(ticketId, chassisNo) {
