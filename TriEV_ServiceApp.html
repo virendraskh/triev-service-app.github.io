@@ -1752,7 +1752,7 @@ async function loadRepairQueue() {
   let res;
   if (isTechOnly) {
     // Plain technician — ONLY their own assigned tickets, nothing else
-    res = await api('getMyRepairs', { mobile: currentUser.mobile });
+    res = await api('getMyRepairs', { mobile: currentUser.mobile, name: currentUser.name });
   } else if (isLeadManager) {
     // Lead/managers see all active repairs across their hub
     const hub = ['Super Admin','Admin','Service Head','General Manager','City Ops'].includes(currentUser.role) ? 'ALL' : currentUser.hub;
@@ -1760,7 +1760,7 @@ async function loadRepairQueue() {
     const activeStatuses = ['Assigned','Parts Requested','Parts Approved','In Repair'];
     res.tickets = (res.tickets||[]).filter(t => activeStatuses.includes(t.Status));
   } else {
-    res = await api('getMyRepairs', { mobile: currentUser.mobile });
+    res = await api('getMyRepairs', { mobile: currentUser.mobile, name: currentUser.name });
   }
 
   if (res.error) {
@@ -1858,8 +1858,8 @@ async function openRepairWork(ticketId) {
   const preqs  = (prRes && prRes.requests) ? prRes.requests : [];
   const events = (evRes && evRes.events) ? evRes.events : [];
   const oem    = normaliseOEM(t.OEM || 'Ampere');
-  const TECH_ONLY = ['Core Technician','Technician','Running Repair Technician','QC Technician'];
-  const isTech = TECH_ONLY.includes(currentUser.role);
+  const TECH_ONLY = ['Core Technician','Technician','Running Repair Technician','QC Technician','Lead Technician'];
+  const isTech = TECH_ONLY.includes(currentUser.role) || currentUser.role.toLowerCase().includes('technician');
   const isViewer = !isTech; // admin/lead/service head viewing
 
   // ── STATUS TIMELINE ─────────────────────────────────────
