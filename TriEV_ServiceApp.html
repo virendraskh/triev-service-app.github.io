@@ -632,7 +632,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 // ═══════════════════════════════════════════════════════════
 // CONFIG — Replace with your deployed Apps Script URL
 // ═══════════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwmuxhNhREpPd3X0AK91PDxByzJFatlDP94UgeCixjiwOZbJKQnygALa0Es8E4XXfgnAA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyAhlKz7Xyq6VhyIYgATaQMcGbNoevk5MkMcARNcFk15cE1AX-GxhQosMAgVEIrUGcF8w/exec';
 
 const HUBS = ['Indirapuram','Chhatarpur','Nangli','Gurgaon'];
 
@@ -1180,6 +1180,8 @@ async function getTechsForHub(hub) {
 async function buildTechDropdown(ticketId, hub) {
   const sel = document.getElementById('tech-sel-' + ticketId);
   if (!sel) return;
+  // Clear cache for this hub so fresh data loads every time dropdown is opened
+  delete techniciansByHub[hub];
   sel.innerHTML = '<option value="">⏳ Loading...</option>';
   const techs = await getTechsForHub(hub);
   if (techs.length === 0) {
@@ -1187,10 +1189,12 @@ async function buildTechDropdown(ticketId, hub) {
     return;
   }
   // Filter to repair-capable roles only
-  const repairRoles = ['Core Technician','Lead Technician','Running Repair Technician'];
-  const filtered = techs.filter(t => repairRoles.some(r => (t.role||'').includes(r) || t.role === r));
+  // Match any role containing 'technician' (case-insensitive) or Hub Manager
+  const filtered = techs.filter(t => 
+    (t.role||'').toLowerCase().includes('technician') || t.role === 'Hub Manager'
+  );
   sel.innerHTML = '<option value="">— Select Technician —</option>' +
-    filtered.map(t => `<option value="${t.mobile}|${t.name}|${t.role}">${t.name} · ${t.role.replace(' Technician','')}</option>`).join('');
+    filtered.map(t => `<option value="${t.mobile}|${t.name}|${t.role}">${t.name} · ${t.role}</option>`).join('');
 }
 
 async function quickAssign(ticketId, chassisNo, ticketHub) {
@@ -1287,10 +1291,11 @@ async function loadDetailTechs(hub) {
   if (!sel || sel.dataset.loaded === hub) return;
   sel.innerHTML = '<option value="">⏳ Loading...</option>';
   const techs = await getTechsForHub(hub);
-  const repairRoles = ['Core Technician','Lead Technician','Running Repair Technician'];
-  const filtered = techs.filter(t => repairRoles.some(r => (t.role||'').includes(r)));
+  const filtered = techs.filter(t => 
+    (t.role||'').toLowerCase().includes('technician') || t.role === 'Hub Manager'
+  );
   sel.innerHTML = '<option value="">— Select Technician —</option>' +
-    filtered.map(t => `<option value="${t.mobile}|${t.name}">${t.name} · ${t.role.replace(' Technician','')}</option>`).join('');
+    filtered.map(t => `<option value="${t.mobile}|${t.name}">${t.name} · ${t.role}</option>`).join('');
   sel.dataset.loaded = hub;
 }
 
