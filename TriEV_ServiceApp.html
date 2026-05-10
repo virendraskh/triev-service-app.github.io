@@ -1760,18 +1760,30 @@ async function loadRepairQueue() {
     const hubRes = await api('getDamageTickets', { hub: currentUser.hub });
     const allHubTickets = hubRes.tickets || [];
 
+    // Debug: log what we're searching through
+    console.log('Total hub tickets:', allHubTickets.length);
+    console.log('My mobile:', myMobile, '| My name:', myName);
+    allHubTickets.forEach(t => {
+      console.log('Ticket:', t.Ticket_ID, '| Status:', t.Status,
+        '| Assigned_To:', t.Assigned_To, '| Assigned_Tech_Name:', t.Assigned_Tech_Name);
+    });
+
     const myTickets = allHubTickets.filter(t => {
-      // Check if this ticket belongs to this technician
       const assignedTo   = String(t.Assigned_To || '').trim();
       const assignedName = String(t.Assigned_Tech_Name || '').trim();
       const status       = String(t.Status || '').trim();
+      // Also check partial match — mobile could be stored with spaces or different format
       const isMyTicket   = assignedTo === myMobile ||
                            assignedName === myName ||
                            assignedTo === myName ||
-                           assignedName === myMobile;
+                           assignedName === myMobile ||
+                           (myMobile && assignedTo.includes(myMobile)) ||
+                           (myName && assignedName.toLowerCase().includes(myName.toLowerCase()));
+      if (isMyTicket) console.log('MATCHED:', t.Ticket_ID, status);
       return isMyTicket && TECH_ACTIVE.includes(status);
     });
 
+    console.log('My tickets found:', myTickets.length);
     res = { tickets: myTickets };
   } else if (isLeadManager) {
     // Lead/managers see all active repairs across their hub
@@ -1959,10 +1971,10 @@ async function openRepairWork(ticketId) {
         </div>`).join('')}
     </div>` : '';
 
-  // ── TECH: RAISE PART REQUEST (only when Assigned / Parts Rejected) ──
-  // Tech can raise request when: just assigned, or some parts rejected, or re-requesting
+  // ── TECH: RAISE PART REQUEST (only when Assigned / Parts Rejected / QC Failed rework) ──
   const hasRejected = preqs.some(pr => pr.Status === 'Rejected');
-  const canRaiseRequest = isTech && (t.Status === 'Assigned' || hasRejected);
+  const isQCFailed  = t.Status === 'QC Failed - Rework';
+  const canRaiseRequest = isTech && (t.Status === 'Assigned' || hasRejected || isQCFailed);
   const isWaiting = isTech && t.Status === 'Parts Requested' && !hasRejected;
   const raiseReqHtml = canRaiseRequest ? `
     <div class="detail-section" style="border-color:var(--primary)">
@@ -1988,7 +2000,7 @@ async function openRepairWork(ticketId) {
       <button class="btn btn-success" onclick="doStartRepair('${ticketId}','${t.Chassis_No}')">▶ Start Repair</button>
     </div>` : '';
 
-  // ── TECH: COMPLETE REPAIR (only when In Repair) ────────
+  // ── TECH: COMPLETE REPAIR (In Repair) ────────────────
   const canComplete = isTech && t.Status === 'In Repair';
   const completeHtml = canComplete ? `
     <div class="detail-section" style="border-color:var(--success)">
@@ -1998,6 +2010,20 @@ async function openRepairWork(ticketId) {
         <textarea id="repair-remarks" placeholder="What was done, any observations..."></textarea>
       </div>
       <button class="btn btn-success" onclick="doCompleteRepair('${ticketId}','${t.Chassis_No}')">✅ Mark Complete → Send to QC</button>
+    </div>` : '';
+
+  // ── TECH: QC FAILED REWORK — start rework directly (no new parts request needed) ──
+  const canRework = isTech && isQCFailed;
+  const reworkHtml = canRework ? `
+    <div class="detail-section" style="border:2px solid var(--danger);background:rgba(239,68,68,.08)">
+      <h3 style="color:var(--danger)">🔴 QC Failed — Rework Required</h3>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0">
+        Fix the issues mentioned in QC remarks above, then click Start Rework.
+        Once done, mark complete to send back to QC.
+      </p>
+      <button class="btn btn-warning" style="margin-bottom:8px" onclick="doStartRework('${ticketId}','${t.Chassis_No}')">
+        🔧 Start Rework
+      </button>
     </div>` : '';
 
   // ── VIEWER: BOTTLENECK ALERT ───────────────────────────
@@ -2040,6 +2066,7 @@ async function openRepairWork(ticketId) {
     ${prHtml}
     ${tsHtml}
     ${waitingHtml}
+    ${reworkHtml||''}
     ${raiseReqHtml}
     ${startHtml}
     ${completeHtml}
@@ -2049,6 +2076,19 @@ async function openRepairWork(ticketId) {
   if (canRaiseRequest) {
     buildPartsSelector(oem, 'repair-parts-selector', 'repair');
   }
+}
+
+// Start rework after QC fail — sets status back to In Repair
+async function doStartRework(ticketId, chassisNo) {
+  const res = await api('startRepair', {
+    ticketId, chassisNo,
+    hub: currentUser.hub,
+    techMobile: currentUser.mobile,
+    techName: currentUser.name,
+  });
+  if (res.error) { toast(res.error, 'error'); return; }
+  toast('🔧 Rework started!', 'success');
+  openRepairWork(ticketId);
 }
 
 // Submit Parts Request — called ONCE, prevents duplicate
