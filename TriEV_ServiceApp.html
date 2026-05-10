@@ -1760,30 +1760,22 @@ async function loadRepairQueue() {
     const hubRes = await api('getDamageTickets', { hub: currentUser.hub });
     const allHubTickets = hubRes.tickets || [];
 
-    // Debug: log what we're searching through
-    console.log('Total hub tickets:', allHubTickets.length);
-    console.log('My mobile:', myMobile, '| My name:', myName);
-    allHubTickets.forEach(t => {
-      console.log('Ticket:', t.Ticket_ID, '| Status:', t.Status,
-        '| Assigned_To:', t.Assigned_To, '| Assigned_Tech_Name:', t.Assigned_Tech_Name);
-    });
-
     const myTickets = allHubTickets.filter(t => {
-      const assignedTo   = String(t.Assigned_To || '').trim();
+      const status = String(t.Status || '').trim();
+      if (!TECH_ACTIVE.includes(status)) return false;
+
+      // Check every field in the ticket for mobile or name match
+      const assignedTo   = String(t.Assigned_To   || '').trim();
       const assignedName = String(t.Assigned_Tech_Name || '').trim();
-      const status       = String(t.Status || '').trim();
-      // Also check partial match — mobile could be stored with spaces or different format
-      const isMyTicket   = assignedTo === myMobile ||
-                           assignedName === myName ||
-                           assignedTo === myName ||
-                           assignedName === myMobile ||
-                           (myMobile && assignedTo.includes(myMobile)) ||
-                           (myName && assignedName.toLowerCase().includes(myName.toLowerCase()));
-      if (isMyTicket) console.log('MATCHED:', t.Ticket_ID, status);
-      return isMyTicket && TECH_ACTIVE.includes(status);
+
+      return assignedTo   === myMobile ||
+             assignedTo   === myName   ||
+             assignedName === myMobile ||
+             assignedName === myName   ||
+             (myMobile.length > 5 && assignedTo.replace(/\s/g,'').includes(myMobile)) ||
+             (myName.length > 2   && assignedName.toLowerCase().includes(myName.toLowerCase().split(' ')[0]));
     });
 
-    console.log('My tickets found:', myTickets.length);
     res = { tickets: myTickets };
   } else if (isLeadManager) {
     // Lead/managers see all active repairs across their hub
