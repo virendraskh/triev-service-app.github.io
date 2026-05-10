@@ -2466,25 +2466,68 @@ function openIOTForm(ticketId, chassisNo, hub) {
   document.getElementById('iot-queue-list').innerHTML = `
     <button class="btn btn-ghost btn-sm" onclick="loadIOTQueue()" style="margin-bottom:12px">← Back</button>
     <div class="detail-section"><h3>${ticketId} — ${chassisNo}</h3></div>
-    <div class="field-group"><label>IOT Status</label>
-      <select id="iot-status"><option value="Working">✅ Working</option><option value="Not Working">❌ Not Working</option></select></div>
+    <div class="field-group"><label>IOT Device Status</label>
+      <select id="iot-status">
+        <option value="Working">✅ Working</option>
+        <option value="Not Working">❌ Not Working</option>
+        <option value="Not Present">⚠️ Not Present</option>
+      </select></div>
     <div class="field-group"><label>GPS Working</label>
-      <select id="iot-gps"><option value="Yes">✅ Yes</option><option value="No">❌ No</option></select></div>
-    <div class="field-group"><label>Lock Working</label>
-      <select id="iot-lock"><option value="Yes">✅ Yes</option><option value="No">❌ No</option></select></div>
-    <div class="field-group"><label>Remarks</label><textarea id="iot-remarks" placeholder="IOT observations..."></textarea></div>
-    <button class="btn btn-teal" onclick="submitIOT('${ticketId}','${chassisNo}','${hub}')">📡 Submit IOT Check</button>
+      <select id="iot-gps">
+        <option value="Yes">✅ Yes</option>
+        <option value="No">❌ No</option>
+      </select></div>
+    <div class="field-group"><label>IOT Wrapped Properly</label>
+      <select id="iot-wrapped">
+        <option value="Yes">✅ Yes — Wrapped & Secured</option>
+        <option value="No">❌ No — Needs Wrapping</option>
+        <option value="NA">— Not Applicable</option>
+      </select></div>
+    <div class="field-group"><label>Tie Belt / Cable Tie Done</label>
+      <select id="iot-tiebelt">
+        <option value="Yes">✅ Yes — Done</option>
+        <option value="No">❌ No — Pending</option>
+        <option value="NA">— Not Applicable</option>
+      </select></div>
+    <div class="field-group"><label>SIM Active</label>
+      <select id="iot-sim">
+        <option value="Yes">✅ Yes</option>
+        <option value="No">❌ No</option>
+        <option value="Not Checked">— Not Checked</option>
+      </select></div>
+    <div class="field-group"><label>Remarks</label>
+      <textarea id="iot-remarks" placeholder="IOT observations, issues found..."></textarea></div>
+    <button class="btn btn-teal" onclick="submitIOT('${ticketId}','${chassisNo}','${hub}')">📡 Submit IOT Check → RFD</button>
   `;
 }
 
 async function submitIOT(ticketId, chassisNo, hub) {
+  const iotStatus = document.getElementById('iot-status').value;
+  const wrapped   = document.getElementById('iot-wrapped')?.value || 'NA';
+  const tiebelt   = document.getElementById('iot-tiebelt')?.value || 'NA';
+  const sim       = document.getElementById('iot-sim')?.value     || 'Not Checked';
+  const remarks   = document.getElementById('iot-remarks')?.value || '';
+
+  // Warn if wrapping not done
+  if (wrapped === 'No' || tiebelt === 'No') {
+    if (!confirm('IOT wrapping/tie belt is not done. Proceed anyway?')) return;
+  }
+
   const res = await api('submitIOT', {
     ticketId, chassisNo, hub,
     iotMobile: currentUser.mobile, iotName: currentUser.name,
-    iotStatus: document.getElementById('iot-status').value,
-    gpsWorking: document.getElementById('iot-gps').value,
-    lockWorking: document.getElementById('iot-lock').value,
-    remarks: document.getElementById('iot-remarks')?.value||'',
+    iotStatus,
+    gpsWorking:  document.getElementById('iot-gps').value,
+    lockWorking: 'N/A',  // removed field
+    iotWrapped:  wrapped,
+    tieBeltDone: tiebelt,
+    simActive:   sim,
+    remarks: [
+      wrapped   !== 'Yes' ? 'Wrap: '+wrapped   : '',
+      tiebelt   !== 'Yes' ? 'TieBelt: '+tiebelt : '',
+      sim !== 'Yes' && sim !== 'Not Checked' ? 'SIM: '+sim : '',
+      remarks
+    ].filter(Boolean).join(' | ') || remarks,
   });
   if (res.error) { toast(res.error,'error'); return; }
   toast(document.getElementById('iot-status').value === 'Working' ? 'RFD Marked! 🚀' : 'IOT Issue logged','success');
