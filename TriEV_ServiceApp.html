@@ -2017,6 +2017,15 @@ async function openRepairWork(ticketId) {
       <button class="btn btn-success" onclick="doCompleteRepair('${ticketId}','${t.Chassis_No}')">✅ Mark Complete → Send to QC</button>
     </div>` : '';
 
+  // ── MANAGER: Generate Repair_Log report for RFD tickets ──
+  const canGenReport = ['Super Admin','Admin','Service Head','Hub Manager','General Manager','City Ops'].includes(currentUser.role) && t.Status === 'RFD';
+  const genReportHtml = canGenReport ? `
+    <div class="detail-section" style="border-color:var(--success)">
+      <h3 style="color:var(--success)">🚀 Vehicle is RFD</h3>
+      <p style="font-size:13px;color:var(--text2);margin:8px 0">Generate the final closure report — writes one complete row to Repair_Log with all timestamps, QC history, parts used and total time.</p>
+      <button class="btn btn-success" onclick="doGenReport('${ticketId}','${t.Chassis_No}')">📊 Generate & Save Repair Log</button>
+    </div>` : '';
+
   // ── TECH: QC FAILED REWORK — start rework directly (no new parts request needed) ──
   const canRework = isTech && isQCFailed;
   const reworkHtml = canRework ? `
@@ -2071,6 +2080,7 @@ async function openRepairWork(ticketId) {
     ${prHtml}
     ${tsHtml}
     ${waitingHtml}
+    ${genReportHtml||''}
     ${reworkHtml||''}
     ${raiseReqHtml}
     ${startHtml}
@@ -2081,6 +2091,22 @@ async function openRepairWork(ticketId) {
   if (canRaiseRequest) {
     buildPartsSelector(oem, 'repair-parts-selector', 'repair');
   }
+}
+
+// Generate Repair_Log entry for a ticket (can be called manually for RFD tickets)
+async function doGenReport(ticketId, chassisNo) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+  const res = await api('closeTicket', {
+    ticketId, chassisNo,
+    closedBy: currentUser.mobile,
+    closedByName: currentUser.name,
+  });
+  btn.disabled = false;
+  btn.textContent = '📊 Generate & Save Repair Log';
+  if (res.error) { toast('Error: ' + res.error, 'error'); return; }
+  showTicketCloseReport(ticketId, res);
 }
 
 // Start rework after QC fail — sets status back to In Repair
